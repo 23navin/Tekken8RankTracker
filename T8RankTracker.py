@@ -12,12 +12,7 @@ import cv2
 import pytesseract
 import re
 
-import numpy as np
-from matplotlib import pyplot as plt
-
-num = [5]
-print(len(num))
-#debugging
+#enable debug output
 save_flag = True
 
 def mkdir_img(path="img"):
@@ -39,6 +34,7 @@ def sec_to_ms(ms):
 
 def save_frame(frame, id, type):
     if save_flag == True:
+        type = re.sub(' ','',type)
         filename = r"img/"+repr(id)+type+".png"
         cv2.imwrite(filename.format(),frame)
 
@@ -48,7 +44,7 @@ def is_ready(text):
         text == "REAOY"
         ))
 
-def read_frame(frame_in, xa=0, xb=0, ya=0, yb=0, threshold=175, time_id=0, description=""):
+def read_frame(frame_in, xa=0, xb=0, ya=0, yb=0, threshold=175, regex='[^A-Za-z0-9]+', extensive=False, time_id=0, description=""):
     if xb > 0 or yb > 0:
         frame_cropped = frame_in[ya:yb, xa:xb]
         frame_resized = cv2.resize(frame_cropped, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
@@ -62,18 +58,30 @@ def read_frame(frame_in, xa=0, xb=0, ya=0, yb=0, threshold=175, time_id=0, descr
     if time_id > 0:
         save_frame(frame_out, time_id, description)
 
-    text =  pytesseract.image_to_string(frame_out, config="--psm 13")
-    text_out = re.sub('[^A-Za-z0-9]+','',text)
-    return text_out
+    if extensive:
+        psm11 =  pytesseract.image_to_string(frame_out, config='--psm 11 --oem 3 -c tessedit_char_whitelist=ABCDEFGHJIKLMNOPQRSTUVWXY')
+        psm13 =  pytesseract.image_to_string(frame_out, config='--psm 13 --oem 3 -c tessedit_char_whitelist=ABCDEFGHJIKLMNOPQRSTUVWXYZ')
+
+        psm11_out = re.sub(regex,'',psm11)
+        psm13_out = re.sub(regex,'',psm13)
+
+        return psm11_out, psm13_out
+
+    else:
+        psm11 =  pytesseract.image_to_string(frame_out, config="--psm 11")
+
+        psm11_out = re.sub(regex,'',psm11)
+
+        return psm11_out
 
 def match_object(frame_in, xa, xb, ya, yb):
     frame = frame_in[ya:yb , xa:xb]
-    template = cv2.imread("empty_dot.png", cv2.IMREAD_GRAYSCALE)
+    template = cv2.imread("assets/empty_dot.png", cv2.IMREAD_GRAYSCALE)
 
     img_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
     res = cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
-    print(f"[{res[2,2]}],[{res[2,15]}],[{res[2,27]}]")
+    # print(f"[{res[2,2]}],[{res[2,15]}],[{res[2,27]}]")
     # plt.subplot(211),plt.imshow(frame)
     # plt.subplot(212),plt.imshow(res,cmap = 'gray')
     
@@ -125,7 +133,7 @@ class YoutubeCapture:
     def get_frame(self):
         ret, frame = self.cap.read()
         if not ret: #figure out better error handling
-            print(f"<DEBUG@{self.get_time()}>frame error")
+            print(f"[DEBUG@{self.get_time()}] frame error")
         return frame
 
     def skip_forward(self,interval):
@@ -157,7 +165,10 @@ match_val = [None]*len(rank_images)
 rank_names = []
 
 #match result dot
-dot_template = cv2.imread('dot.png', cv2.IMREAD_GRAYSCALE)
+dot_template = cv2.imread('assets/dot.png', cv2.IMREAD_GRAYSCALE)
+
+#opponent fighter crop widths for ocr
+crop_widths = [850, 980, 1100]
 
 #tekken 8 fighters list
 fighter_list = ['KAZUYA',
@@ -200,42 +211,6 @@ for filename in filenames:
 
     rank_names.append(name)
 
-####
-    
-frame = cv2.imread("img/4227.0pre game.png")
-
-# might need read_frame output a tuple of psm11 and psm13 for matching
-# or take the time and do match templating
-# fighter_temp = read_frame(
-#             frame_in=frame, 
-#             xa=850, 
-#             xb=1230, 
-#             ya=450, 
-#             yb=500, 
-#             time_id=1,
-#             description=f"opponent fighter")
-
-# #check if valid fighter
-# for fighter in fighter_list:
-#     if fighter in fighter_temp:
-#         opponent_fighter = fighter
-#         valid_fighter = True
-#         break
-
-# player_rounds , opponent_rounds = count_match_dots(frame)
-# print(f"counted {player_rounds} v {opponent_rounds} round")
-
-# frame_rank = frame[530:575, 1140:1230]
-# for idx, rank_img in enumerate(rank_images):
-#     res = cv2.matchTemplate(frame_rank, rank_img, cv2.TM_SQDIFF)
-#     match_val[idx] = cv2.minMaxLoc(res)[0]
-#     print(f"{rank_names[idx]} >> {match_val[idx]}")
-
-# index_min = min(range(len(match_val)), key=match_val.__getitem__)
-# opponent_rank = rank_names[index_min]
-
-####
-
 #clear img log
 mkdir_img()
 
@@ -246,13 +221,12 @@ opponent_name = None
 opponent_rank = None
 opponent_fighter = None
 rating = start_rating
-new_rating = None
 outcome = None
 
 # Tekken 8 Rank Tracker - Finite State Machine
 state = "before"
 if save_flag == True:
-    print(f"\n\n<DEBUG@{yt.get_time()}>State Machine Starting")
+    print(f"\n\n[DEBUG@{yt.get_time()}] State Machine Starting")
 
 #finite state machine
 while True:
@@ -275,7 +249,7 @@ while True:
 
         #check for trigger
         if "RankedMatch" in trigger:
-            print(f"<EVENT@{yt.get_time()}>Tekken Launched")
+            print(f"[EVENT@{yt.get_time()}] Tekken Launched")
 
             #change state
             state = "pre game"
@@ -300,10 +274,10 @@ while True:
                         yb=560, 
                         time_id=yt.get_time(),
                         description=f"{state}_tSTAGE")
-
+        
         #check for trigger
         if "STAGE" in trigger:
-            print(f"<EVENT@{yt.get_time()}>Entering Lobby")
+            print(f"[EVENT@{yt.get_time()}] Entering Lobby")
 
             #check if delayed enter into training
             kazuya_temp = read_frame(
@@ -315,67 +289,137 @@ while True:
                             time_id=yt.get_time(),
                             description=f"{state}_kazuya")
             
-            if not "KAZUYA" in kazuya_temp:
+            #if entering training
+            if "KAZUYA" in kazuya_temp:
+                #increment video playback time
+                yt.skip_forward(pregame_interval)
+            #if entering match
+            else:
                 valid_fighter = False
                 while not valid_fighter:
                     #find opponent fighter
-                    fighter_temp = read_frame(
-                                frame_in=frame, 
-                                xa=770, 
-                                xb=1250, 
-                                ya=450, 
-                                yb=500, 
-                                time_id=yt.get_time(),
-                                description=f"{state}_opponent fighter")
-                    
-                    #check if valid fighter
-                    for fighter in fighter_list:
-                        if fighter in fighter_temp:
-                            opponent_fighter = fighter
-                            valid_fighter = True
-                            break
-                    #if invalid fighter, increment manually since in while loop
-                    else:
-                        #read frames until fighter is legible
-                        #advance video playback
-                        yt.skip_forward(0.5)
-
-                        #capture new frame
-                        frame = yt.get_frame()
+                    for width in crop_widths:
+                        fighter_temp = read_frame(
+                                    frame_in=frame, 
+                                    xa=width, 
+                                    xb=1250, 
+                                    ya=450, 
+                                    yb=500,
+                                    extensive=True,
+                                    time_id=yt.get_time(),
+                                    description=f"{state}_opponent fighter")
                         
-                        #img log
-                        save_frame(frame, yt.get_time(), state)
+                        #check if valid fighter
+                        for fighter in fighter_list:
+                            for string in fighter_temp:
+                                if fighter in string:
+                                    opponent_fighter = fighter
+                                    valid_fighter = True
+
+                                    #find opponent name
+                                    opponent_name = read_frame(
+                                        frame_in=frame,
+                                        xa=830,
+                                        xb=1130,
+                                        ya=540,
+                                        yb=570,
+                                        time_id=yt.get_time(),
+                                        description=f"{state}_opponent name")
+                                    
+                                    #find opponent rank
+                                    frame_rank = frame[530:575, 1140:1230]
+                                    for idx, rank_img in enumerate(rank_images):
+                                        res = cv2.matchTemplate(frame_rank, rank_img, cv2.TM_SQDIFF)
+                                        match_val[idx] = cv2.minMaxLoc(res)[0]
+
+                                    index_min = min(range(len(match_val)), key=match_val.__getitem__)
+                                    opponent_rank = rank_names[index_min]
+
+                                    print(f"[EVENT@{yt.get_time()}] Starting match against {opponent_name} ({opponent_fighter} - {opponent_rank})")
+
+                                    #advance video playback by minimum match length
+                                    yt.skip_forward(60)
+
+                                    #change state
+                                    state = "in game"
+
+                                    break
+                            else:
+                                continue
+                            break
+                        else:
+                            continue
+                        break
                     
-                #find opponent name
-                opponent_name = read_frame(
-                    frame_in=frame,
-                    xa=830,
-                    xb=1130,
-                    ya=540,
-                    yb=570,
-                    time_id=1,
-                    description=f"{state}_opponent name")
-                
-                #find opponent rank
-                frame_rank = frame[530:575, 1140:1230]
-                for idx, rank_img in enumerate(rank_images):
-                    res = cv2.matchTemplate(frame_rank, rank_img, cv2.TM_SQDIFF)
-                    match_val[idx] = cv2.minMaxLoc(res)[0]
+                    #if invalid fighter, check for training and increment
+                    else:
+                        #check if delayed enter into training ('kazuya' text can be missed by ocr during an animation)
+                        kazuya_temp = read_frame(
+                                        frame_in=frame, 
+                                        xa=1060, 
+                                        xb=1230, 
+                                        ya=520, 
+                                        yb=570, 
+                                        time_id=yt.get_time(),
+                                        description=f"{state}_kazuya")
+                        
+                        #if entering training
+                        if "KAZUYA" in kazuya_temp:
+                            print(f"[EVENT@{yt.get_time()}] Mistaken. Leaving Lobby")
 
-                index_min = min(range(len(match_val)), key=match_val.__getitem__)
-                opponent_rank = rank_names[index_min]
+                            #increment video playback time
+                            yt.skip_forward(pregame_interval)
 
-                print(f"<EVENT@{yt.get_time()}>Starting match against {opponent_name} ({opponent_fighter} - {opponent_rank})")
+                            #exit loop since not entering lobby
+                            break
+                        #increment manually since in while loop
+                        else:
+                            #read frames until fighter is legible
+                            #advance video playback
+                            yt.skip_forward(0.5)
 
-                #advance video playback by minimum match length
-                yt.skip_forward(60)
-
-                #change state
-                state = "in game"
+                            #capture new frame
+                            frame = yt.get_frame()
+                            
+                            #img log
+                            save_frame(frame, yt.get_time(), state)                     
         #if no trigger, increment
         else:
-            #increment video playback time
-            yt.skip_forward(pregame_interval)
+            for idx in range(10):
+                #check top left corner for fps counter
+                fps_temp = read_frame(
+                                frame_in=frame,
+                                xa=0,
+                                xb=60,
+                                ya=0,
+                                yb=25,
+                                time_id=1,
+                                description='fps'
+                )
+                #if its there, player is still playing tekken but is not in queue
+                if "fps" in fps_temp:
+                    #increment video playback time
+                    yt.skip_forward(pregame_interval)
+
+                    break
+                #if not, increment manually and check again
+                else:
+                    #advance video playback
+                    yt.skip_forward(5)
+
+                    #capture new frame
+                    frame = yt.get_frame()
+                    
+                    #img log
+                    save_frame(frame, yt.get_time(), state)
+            #if fps counter is consistently not present
+            else:
+                print(f"[EVENT@{yt.get_time()}] Tekken Closed")
+
+                #escape FSM
+                state = "after"
+
+                
 
     if state == "in game":
         #capture new frame
@@ -405,7 +449,7 @@ while True:
         else:
             #only change if valid number (filter out numbers picked up unintentionally)
             if (rating - 1000) <= trigger <= (rating + 1000):
-                print(f"<EVENT@{yt.get_time()}>Match concluded")
+                print(f"[EVENT@{yt.get_time()}] Match concluded")
 
                 #advance by min
                 #no skip is 7seconds
@@ -422,11 +466,11 @@ while True:
 
         #search for dots, indicating no rematch possible
         player_dots, opponent_dots = count_match_dots(frame)
-        print(f"({yt.get_time()}): {player_dots}/3 and {opponent_dots}/3")
+        # print(f"({yt.get_time()}): {player_dots}/3 and {opponent_dots}/3")
 
         if player_dots == -1 or opponent_dots == -1:
             #maybe .5 seconds for interval
-            yt.skip_forward(0.5)
+            yt.skip_forward(3) #consider increasing to 2-5 seconds from 0.5 seconds
         else:
             #read new rating value
             rating_temp = read_frame(
@@ -450,7 +494,16 @@ while True:
 
             #if number is present, update rating
             else:
+                #determine match outcome
+                if(rating_temp < rating):
+                    outcome = "Loss"
+                else:
+                    outcome = "Win"
+
+                #set rating
                 rating = rating_temp
+
+                print(f"[EVENT@{yt.get_time()}] Match Result: {outcome} - Rating: {rating}")
             
             #check if final match
             if player_dots == 2 or opponent_dots == 2:
@@ -460,13 +513,12 @@ while True:
                 else:
                     outcome = "Loss"
 
+                print(f"[EVENT@{yt.get_time()}] Leaving lobby with {opponent_name}")
+
                 #clear opponent variables
                 opponent_fighter = None
                 opponent_name = None
                 opponent_rank = None
-
-                print(f"<EVENT@{yt.get_time()}>Match Result: {outcome} - Rating: {rating}")
-                print(f"<EVENT@{yt.get_time()}>Leaving lobby with {opponent_name}")
 
                 #advance video playback by minimum pre-game length
                 yt.skip_forward(12)
@@ -500,10 +552,10 @@ while True:
                     )
                     
                     if is_ready(player_ready) and is_ready(opponent_ready):
-                        print(f"<EVENT@{yt.get_time()}>Starting rematch against {opponent_name} ({opponent_fighter} - {opponent_rank})")
+                        print(f"[EVENT@{yt.get_time()}] Starting rematch against {opponent_name} ({opponent_fighter} - {opponent_rank})")
                             
                         #advance video playback by minimum match length
-                        yt.skip_forward(60)
+                        yt.skip_forward(90) #consider increasing from 60
                         
                         #change state
                         state = "in game"
@@ -514,7 +566,7 @@ while True:
                     frame_black_grey = cv2.cvtColor(frame_black_cropped, cv2.COLOR_BGR2GRAY)
 
                     if cv2.countNonZero(frame_black_grey) == 0:
-                        print(f"<EVENT@{yt.get_time()}>Leaving lobby with {opponent_name}")
+                        print(f"[EVENT@{yt.get_time()}] Leaving lobby with {opponent_name}")
 
                         #advance video playback by minimum pre game length
                         yt.skip_forward(6)
