@@ -114,7 +114,7 @@ def count_match_dots(frame_in):
     return player_dots, opponent_dots
 
 class YoutubeCapture:
-    def __init__(self, youtube_url, format_id, log_path=r"bin/log.csv", img_path=r"/bin/img"):
+    def __init__(self, youtube_url, format_id, log_path=r"bin/log.csv", img_path=r"bin/img"):
         #save paths
         self.url = youtube_url
         self.log_path = log_path
@@ -133,9 +133,9 @@ class YoutubeCapture:
                 pass
 
         #create cv2 object using url
-        self.playback_time = 0
+        self.playback_time = 9100
         self.cap = cv2.VideoCapture(direct_url)
-        self.cap.set(cv2.CAP_PROP_POS_MSEC, self.playback_time)
+        self.cap.set(cv2.CAP_PROP_POS_MSEC, sec_to_ms(self.playback_time))
 
         #get video length
         self.video_length = info_dict.get('duration')
@@ -163,7 +163,7 @@ class YoutubeCapture:
                                 'Youtube_Link'])
                 
         #create new img/ diretory
-        Path("bin/img").mkdir(parents=True, exist_ok=True)
+        mkdir_img()
 
     def get_frame(self):
         ret, frame = self.cap.read()
@@ -224,7 +224,7 @@ if __name__ == "__main__":
 
     #parameters
     url = "https://www.youtube.com/watch?v=NKpNzW7lXk0"
-    setup_interval = 600 # soft
+    setup_interval = 10 # soft
     pregame_interval = 2
     ingame_interval = 5
     postgame_interval = 0.3
