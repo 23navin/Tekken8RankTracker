@@ -1,11 +1,5 @@
 .venv/
-
-img/
-img2/
-ranks_small copy/
-ranks_small_old/
-ranks3/
 **/.DS_Store
 
-cookies.txt
-notepad.py
+**/bin
+**/img*

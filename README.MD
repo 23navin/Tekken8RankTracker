@@ -5,12 +5,10 @@ A Python script that uses OpenCV and PyTesseract to track a player's Tekken 8 ra
 ## To Do List
 
 1. Calibrate sampling intervals and skips (to increase performance)
-2. Find a way to make cv2.set(CAP_PROP_POS_MSEC) faster (to increase performance)
-3. Find a way to detect when the player has stopped playing Tekken before the vod has finished (to increase performance)
-4. Improve 'left lobby' detection (by reading match result dots and inferring whether a rematch is possible or not)
+2. Detect when player is in training but not looking for match
 
 ## Features to add
 
-1. Automate finding vods and queueing them for processing. Right now, the script has to be run manually on each vod.
-2. Output all game/rank data to csv (so that it can be analyzed)
-3. Create an graphic interface to represent rank data usng react (to highlight interesting trends)
+1. Automatically find all Tekken vods in a youtube channel
+2. Multithreading
+3. Graphical representation of data using React
