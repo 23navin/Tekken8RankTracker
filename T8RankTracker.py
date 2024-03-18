@@ -33,8 +33,8 @@ def mkdir_img(path="bin/img"):
         else: raise
 
 #convert seconds to milli-seconds
-def sec_to_ms(ms):
-    return ms*1000
+def sec_to_ms(sec):
+    return sec*1000
 
 #save a frame as a png to img bin
 def save_frame(frame, id, type, save_flag=True):
@@ -137,65 +137,65 @@ def count_match_dots(frame_in):
 #returns the minimum and maximum rating for a given rank
 def rank_rating_range(rank_name):
     if rank_name == "Beginner":
-        return 0,399
+        return 0,999
     elif rank_name == "1stDan":
-        return 300, 999
+        return 0, 1599
     elif rank_name == "2stDan":
-        return 1000, 1599
+        return 400, 2599
     elif rank_name == "Fighter":
-        return 1600, 2599
+        return 1000, 3399
     elif rank_name == "Strategist":
-        return 2600, 3399
+        return 1600, 4199
     elif rank_name == "Combatant":
-        return 3400, 4199
+        return 2600, 5399
     elif rank_name == "Brawler":
-        return 4200, 5399
+        return 3400, 6399
     elif rank_name == "Ranger":
-        return 5400, 6399
+        return 4200, 7399
     elif rank_name == "Cavalry":
-        return 6400, 7399
+        return 5400, 9199
     elif rank_name == "Warrior":
-        return 7400, 9199
+        return 6400, 10799
     elif rank_name == "Assailant":
-        return 9200, 10799
+        return 7400, 12399
     elif rank_name == "Dominator":
-        return 10800, 12399
+        return 9200, 14699
     elif rank_name == "Vanquisher":
-        return 12400, 14699
+        return 10800, 16599
     elif rank_name == "Destroyer":
-        return 14700, 16599
+        return 12400, 18499
     elif rank_name == "Eliminator":
-        return 16600, 18499
+        return 14700, 23099
     elif rank_name == "Garyu":
-        return 18500, 23099
+        return 16600, 27299
     elif rank_name == "Shinryu":
-        return 23100, 27299
+        return 18500, 31499
     elif rank_name == "Tenryu":
-        return 27300, 31499
+        return 23100, 36499
     elif rank_name == "MightyRuler":
-        return 31500, 36499
+        return 27300, 41099
     elif rank_name == "FlameRuler":
-        return 36500, 41099
+        return 31500, 45699
     elif rank_name == "BattleRuler":
-        return 41100, 45699
+        return 36500, 52299
     elif rank_name == "Fujin":
-        return 45700, 52299
+        return 41100, 58499
     elif rank_name == "Raijin":
-        return 52300, 58499
+        return 45700, 64699
     elif rank_name == "Kishin":
-        return 58500, 64699
+        return 52300, 70899
     elif rank_name == "Bushin":
-        return 64700, 70899
+        return 58500, 79099
     elif rank_name == "TekkenKing":
-        return 70900, 79099
+        return 64700, 86899
     elif rank_name == "TekkenEmperor":
-        return 79100, 86899
+        return 70900, 97299
     elif rank_name == "TekkenGod":
-        return 87900, 97299
+        return 79100, 109699
     elif rank_name == "TekkenGodSupreme":
-        return 97300, 109699
+        return 87900, 200000
     elif rank_name == "GodOfDestruction":
-        return 109700, 200000
+        return 97300, 200000
 
 #class to handle youtube video stream and saving match information to log csv
 class YoutubeCapture:
@@ -319,11 +319,15 @@ if __name__ == "__main__":
     #vod input
     url = "https://www.youtube.com/watch?v=NKpNzW7lXk0"
 
-    #parameters
+    #interval parameters
     setup_interval = 10
     pregame_interval = 2
     ingame_interval = 5
     postgame_interval = 0.3
+
+    #minimum length parameters
+    min_pregame_length = 12
+    min_match_length = 90
 
     #alphanumeric sort key from https://stackoverflow.com/a/2669120
     convert = lambda text: int(text) if text.isdigit() else text
@@ -550,7 +554,7 @@ if __name__ == "__main__":
                                         print(f"[EVENT@{yt.get_time()}] Starting match against {opponent_name} ({opponent_fighter} - {opponent_rank})")
 
                                         #advance video playback by minimum match length
-                                        yt.skip_forward(60)
+                                        yt.skip_forward(min_match_length)
 
                                         #change state
                                         state = "in game"
@@ -636,10 +640,10 @@ if __name__ == "__main__":
 
             #search for dots, indicating no rematch possible
             player_dots, opponent_dots, outcome = count_match_dots(frame)
-            # print(f"({yt.get_time()}): {player_dots}/3 and {opponent_dots}/3")
+            #if dots are not legible
             if player_dots == -1 or opponent_dots == -1:
-                #maybe .5 seconds for interval
-                yt.skip_forward(3) #consider increasing to 2-5 seconds from 0.5 seconds
+                #skip forward and try to read again
+                yt.skip_forward(3)
             else:
                 #read new rating value
                 rating_temp = read_frame(
@@ -653,9 +657,9 @@ if __name__ == "__main__":
                 #try to read a number from rating_temp
                 try:
                     rating_temp = int(re.sub(r'\D','',rating_temp))
-                #if number is not present, increment
+                #if number is not present
                 except ValueError:
-                    #maybe .5 seconds for interval
+                    #skip forward and try to read again
                     yt.skip_forward(0.5)
                     continue
                 #if number is present, update rating
@@ -716,7 +720,7 @@ if __name__ == "__main__":
                     opponent_rank = None
 
                     #advance video playback by minimum pre-game length
-                    yt.skip_forward(12)
+                    yt.skip_forward(min_pregame_length)
 
                     #change state
                     state = "pre game"
@@ -748,7 +752,7 @@ if __name__ == "__main__":
                             print(f"[EVENT@{yt.get_time()}] Leaving lobby with {opponent_name}")
 
                             #advance video playback by minimum pre game length
-                            yt.skip_forward(6)
+                            yt.skip_forward(min_pregame_length)
                             
                             #change state
                             state = "pre game"
@@ -760,11 +764,12 @@ if __name__ == "__main__":
                             print(f"[EVENT@{yt.get_time()}] Starting rematch against {opponent_name} ({opponent_fighter} - {opponent_rank})")
                                 
                             #advance video playback by minimum match length
-                            yt.skip_forward(90) #consider increasing from 60
+                            yt.skip_forward(min_match_length)
                             
                             #change state
                             state = "in game"
 
+                            #escape infinite while loop
                             break
                         
                         #check for leaving match
@@ -775,7 +780,7 @@ if __name__ == "__main__":
                             print(f"[EVENT@{yt.get_time()}] Leaving lobby with {opponent_name}")
 
                             #advance video playback by minimum pre game length
-                            yt.skip_forward(6)
+                            yt.skip_forward(min_pregame_length - 6)
                             
                             #change state
                             state = "pre game"
@@ -790,3 +795,6 @@ if __name__ == "__main__":
                         frame = yt.get_frame()
                         #img log
                         save_frame(frame, yt.get_time(), state)
+        
+        if state == "after":
+            break
