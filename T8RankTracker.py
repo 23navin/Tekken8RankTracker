@@ -17,6 +17,7 @@ import re
 # data logging
 import csv
 
+#creates img log
 def mkdir_img(path="bin/img"):
     try:
         if os.path.isdir(path):
@@ -31,25 +32,25 @@ def mkdir_img(path="bin/img"):
             pass
         else: raise
 
+#convert seconds to milli-seconds
 def sec_to_ms(ms):
     return ms*1000
 
+#save a frame as a png to img bin
 def save_frame(frame, id, type, save_flag=True):
     if save_flag == True:
         type = re.sub(' ','',type)
         filename = f"bin/img/{id:.1f}{type}.png"
         cv2.imwrite(filename.format(),frame)
 
+#macro-like function to check if a string == READY or REAOY (tesseract has a hard time distinguishing the two)
 def is_ready(text):
     return any((
-        text == "READY",
-        text == "REAOY"
+        "READY" in text,
+        "REAOY" in text
         ))
 
-#r140to240
-#g200to249
-#b216to254
-
+#preprocess fighter names and read with tesseract
 def read_fighter(frame_in, xa=0, xb=0, ya=0, yb=0, threshold=175, regex='[^A-Za-z0-9]+', time_id=0, description=""):
     frame_cropped = frame_in[ya:yb, xa:xb]
     frame_resized = cv2.resize(frame_cropped, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
@@ -73,6 +74,7 @@ def read_fighter(frame_in, xa=0, xb=0, ya=0, yb=0, threshold=175, regex='[^A-Za-
 
     return psm11_out, psm13_out
 
+#preprocess image to be read by tesseract
 def read_frame(frame_in, xa=0, xb=0, ya=0, yb=0, threshold=175, regex='[^A-Za-z0-9-]+', time_id=0, description=""):
     if xb > 0 or yb > 0:
         frame_cropped = frame_in[ya:yb, xa:xb]
@@ -93,21 +95,17 @@ def read_frame(frame_in, xa=0, xb=0, ya=0, yb=0, threshold=175, regex='[^A-Za-z0
 
     return psm11_out
 
+#template matches 'empty dot' with post-game match result dots
 def match_object(frame_in, xa, xb, ya, yb):
     frame = frame_in[ya:yb , xa:xb]
     template = cv2.imread("assets/empty_dot.png", cv2.IMREAD_GRAYSCALE)
 
     img_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     res = cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
-
-    # print(f"[{res[2,2]}],[{res[2,15]}],[{res[2,27]}]")
-    # plt.subplot(211),plt.imshow(frame)
-    # plt.subplot(212),plt.imshow(res,cmap = 'gray')
     
     return res
 
-    # return (res > 0.8).sum()
-
+#uses match_object to determine how many rounds have been won by each player and who won the most recent round
 def count_match_dots(frame_in):
     player_res = match_object(frame_in, 1004, 1042, 510, 524)
     player_dots = 0
@@ -118,19 +116,88 @@ def count_match_dots(frame_in):
     thr = 0.3
     dot_locations = [2, 15, 27]
 
+    winloss = None
+
     for loc in dot_locations:
-        if player_res[2, loc] > thr and opponent_res[2,loc] > thr:
-            return player_dots, opponent_dots
+        if player_res[2, loc] < thr and opponent_res[2,loc] < thr:
+            return -1,-1,None
         
-        if player_res[2,loc] > thr and opponent_res[2,loc] < thr:
+        if player_res[2, loc] > thr and opponent_res[2,loc] > thr:
+            return player_dots, opponent_dots, winloss
+        
+        if player_res[2,loc] > thr:
             opponent_dots += 1
-        elif opponent_res[2,loc] > thr and player_res[2,loc] < thr:
-            player_dots += 1
+            winloss = "Loss"
         else:
-            return -1,-1
+            player_dots += 1
+            winloss = "Win"
 
-    return player_dots, opponent_dots
+    return player_dots, opponent_dots, winloss
 
+#returns the minimum and maximum rating for a given rank
+def rank_rating_range(rank_name):
+    if rank_name == "Beginner":
+        return 0,399
+    elif rank_name == "1stDan":
+        return 300, 999
+    elif rank_name == "2stDan":
+        return 1000, 1599
+    elif rank_name == "Fighter":
+        return 1600, 2599
+    elif rank_name == "Strategist":
+        return 2600, 3399
+    elif rank_name == "Combatant":
+        return 3400, 4199
+    elif rank_name == "Brawler":
+        return 4200, 5399
+    elif rank_name == "Ranger":
+        return 5400, 6399
+    elif rank_name == "Cavalry":
+        return 6400, 7399
+    elif rank_name == "Warrior":
+        return 7400, 9199
+    elif rank_name == "Assailant":
+        return 9200, 10799
+    elif rank_name == "Dominator":
+        return 10800, 12399
+    elif rank_name == "Vanquisher":
+        return 12400, 14699
+    elif rank_name == "Destroyer":
+        return 14700, 16599
+    elif rank_name == "Eliminator":
+        return 16600, 18499
+    elif rank_name == "Garyu":
+        return 18500, 23099
+    elif rank_name == "Shinryu":
+        return 23100, 27299
+    elif rank_name == "Tenryu":
+        return 27300, 31499
+    elif rank_name == "MightyRuler":
+        return 31500, 36499
+    elif rank_name == "FlameRuler":
+        return 36500, 41099
+    elif rank_name == "BattleRuler":
+        return 41100, 45699
+    elif rank_name == "Fujin":
+        return 45700, 52299
+    elif rank_name == "Raijin":
+        return 52300, 58499
+    elif rank_name == "Kishin":
+        return 58500, 64699
+    elif rank_name == "Bushin":
+        return 64700, 70899
+    elif rank_name == "TekkenKing":
+        return 70900, 79099
+    elif rank_name == "TekkenEmperor":
+        return 79100, 86899
+    elif rank_name == "TekkenGod":
+        return 87900, 97299
+    elif rank_name == "TekkenGodSupreme":
+        return 97300, 109699
+    elif rank_name == "GodOfDestruction":
+        return 109700, 200000
+
+#class to handle youtube video stream and saving match information to log csv
 class YoutubeCapture:
     def __init__(self, youtube_url, format_id, log_path=r"bin/log.csv", img_path=r"bin/img"):
         #save paths
@@ -159,7 +226,7 @@ class YoutubeCapture:
                 pass
 
         #create cv2 object using url
-        self.playback_time = 12800
+        self.playback_time = 14324
         self.cap = cv2.VideoCapture(direct_url)
         self.cap.set(cv2.CAP_PROP_POS_MSEC, sec_to_ms(self.playback_time))
 
@@ -249,21 +316,22 @@ if __name__ == "__main__":
     #enable debug output
     save_flag = True
 
-    #parameters
+    #vod input
     url = "https://www.youtube.com/watch?v=NKpNzW7lXk0"
-    setup_interval = 10 # soft
+
+    #parameters
+    setup_interval = 10
     pregame_interval = 2
     ingame_interval = 5
     postgame_interval = 0.3
-    start_rating = 32740
 
     #alphanumeric sort key from https://stackoverflow.com/a/2669120
     convert = lambda text: int(text) if text.isdigit() else text
     alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ]
 
     #import rank images
-    rank_images = [cv2.imread(file) for file in sorted(glob.glob("assets/ranks_small/*.png"), key=alphanum_key)]
-    filenames = sorted(glob.glob("assets/ranks_small/*.png"), key=alphanum_key)
+    rank_images = [cv2.imread(file) for file in sorted(glob.glob("assets/ranks/*.png"), key=alphanum_key)]
+    filenames = sorted(glob.glob("assets/ranks/*.png"), key=alphanum_key)
     match_val = [None]*len(rank_images)
     rank_names = []
 
@@ -315,30 +383,33 @@ if __name__ == "__main__":
         rank_names.append(name)
 
     #game stats
-    yt_link = url.split("=")[1]
-    timestamp = None
     opponent_name = None
     opponent_rank = None
     opponent_fighter = None
-    rating = start_rating
+    rating = None
+    player_rank = None
+    min_rating = None
+    max_rating = None
     outcome = None
-
-    # Tekken 8 Rank Tracker - Finite State Machine
-    #initial state
-    state = "before"
 
     #tekken after counter
     no_fps = 0
 
-    #set video capture
+    #setup video capture
     yt = YoutubeCapture(url, '136')
+
+    # Tekken 8 Rank Tracker - Finite State Machine
+    #initial state
+    state = "before"
 
     if save_flag == True:
         print(f"\n\n[DEBUG@{yt.get_time()}] State Machine Starting")
 
     #finite state machine
     while True:
+        #check if vod is over
         if yt.playback_time >= yt.video_length:
+            #if so, exit fsm
             yt.playback_time == yt.video_length
             print(f"[DEBUG@{yt.get_time()}] VOD finished")
             state == "after"
@@ -412,7 +483,7 @@ if __name__ == "__main__":
                 print(f"[EVENT@{yt.get_time()}] Entering Lobby")
 
                 #check if delayed enter into training
-                kazuya_temp = read_frame(
+                kazuya_temp = read_fighter(
                                 frame_in=frame, 
                                 xa=1060, 
                                 xb=1230, 
@@ -422,6 +493,8 @@ if __name__ == "__main__":
                                 description="_kazuya")
                 #if entering training
                 if "KAZUYA" in kazuya_temp:
+                    print(f"[EVENT@{yt.get_time()}] Mistaken. Leaving Lobby")
+
                     #increment video playback time
                     yt.skip_forward(pregame_interval)
                 #if entering match
@@ -456,12 +529,22 @@ if __name__ == "__main__":
                                             description="_opponentname")
                                         
                                         #find opponent rank
-                                        frame_rank = frame[530:575, 1140:1230]
+                                        frame_rank_player = frame[530:575, 1140:1230]
                                         for idx, rank_img in enumerate(rank_images):
-                                            res = cv2.matchTemplate(frame_rank, rank_img, cv2.TM_SQDIFF)
+                                            res = cv2.matchTemplate(frame_rank_player, rank_img, cv2.TM_SQDIFF)
                                             match_val[idx] = cv2.minMaxLoc(res)[0]
                                         index_min = min(range(len(match_val)), key=match_val.__getitem__)
                                         opponent_rank = rank_names[index_min]
+
+                                        #find player rank
+                                        frame_rank_player = frame[530:575, 390:480]
+                                        for idx, rank_img in enumerate(rank_images):
+                                            res = cv2.matchTemplate(frame_rank_player, rank_img, cv2.TM_SQDIFF)
+                                            match_val[idx] = cv2.minMaxLoc(res)[0]
+                                        index_min = min(range(len(match_val)), key=match_val.__getitem__)
+                                        player_rank = rank_names[index_min]
+
+                                        min_rating, max_rating = rank_rating_range(player_rank)
 
                                         yt.new_lobby(opponent_name,opponent_fighter,opponent_rank)
                                         print(f"[EVENT@{yt.get_time()}] Starting match against {opponent_name} ({opponent_fighter} - {opponent_rank})")
@@ -539,7 +622,7 @@ if __name__ == "__main__":
             #if number is present, change state
             else:
                 #only change if valid number (filter out numbers picked up unintentionally)
-                if (rating - 1000) <= trigger <= (rating + 1000):
+                if (min_rating - 1000) <= trigger <= (max_rating + 1000):
                     print(f"[EVENT@{yt.get_time()}] Match concluded")
 
                     #change state
@@ -552,7 +635,7 @@ if __name__ == "__main__":
             save_frame(frame, yt.get_time(), state)
 
             #search for dots, indicating no rematch possible
-            player_dots, opponent_dots = count_match_dots(frame)
+            player_dots, opponent_dots, outcome = count_match_dots(frame)
             # print(f"({yt.get_time()}): {player_dots}/3 and {opponent_dots}/3")
             if player_dots == -1 or opponent_dots == -1:
                 #maybe .5 seconds for interval
@@ -580,11 +663,11 @@ if __name__ == "__main__":
                     #check for adjustment
                     adjustment_temp = read_frame(
                                 frame_in=frame,
-                                xa=642,
+                                xa=630,
                                 xb=680,
                                 ya=492,
                                 yb=510,
-                                threshold=50,
+                                threshold=100,
                                 time_id=yt.get_time(),
                                 description="_radj")
                     #if negative adjustment
@@ -608,14 +691,9 @@ if __name__ == "__main__":
                             pass
                         #if there is a number, apply the adjustment
                         else:
-                            rating_temp += adjustment
-
-                    #determine match outcome
-                    if(rating_temp < rating):
-                        outcome = "Loss"
-                    else:
-                        outcome = "Win"
+ 
                     #set rating
+                            rating_temp += adjustment
                     rating = rating_temp
 
                     yt.match_result(outcome, rating)
@@ -665,7 +743,7 @@ if __name__ == "__main__":
                                     time_id=yt.get_time(),
                                     description="_opponentintent")
                         #check for 'cancel'
-                        if player_intent == "cancel" or opponent_intent == "cancel":
+                        if "CANCEL" in player_intent or "CANCEL" in opponent_intent:
                             yt.end_lobby()
                             print(f"[EVENT@{yt.get_time()}] Leaving lobby with {opponent_name}")
 
