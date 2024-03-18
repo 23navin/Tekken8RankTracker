@@ -377,7 +377,7 @@ if __name__ == "__main__":
 
     for filename in filenames:
         # rank_small/16_shinryu.png
-        name = filename.split("_")[2]
+        name = filename.split("_")[1]
         name = name.split(".")[0]
 
         rank_names.append(name)
