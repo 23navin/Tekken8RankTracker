@@ -7,8 +7,7 @@ A Python script that uses OpenCV and PyTesseract to track a player's Tekken 8 ra
 1. Calibrate sampling intervals and skips (to increase performance)
 2. Detect when player is in training but not looking for match
 3. Put large white border around frame crops
-4. cancel check
-5. lost connection check (persistant RankedMatch)
+4. Find a way to check for lost connections
 
 ## Features to add
 

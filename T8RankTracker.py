@@ -7,6 +7,7 @@ from pathlib import Path
 
 # getting yt frames and image processing
 import yt_dlp as youtube_dl
+import numpy as np
 import cv2
 
 # image ocr and text processing
@@ -36,7 +37,7 @@ def sec_to_ms(ms):
 def save_frame(frame, id, type, save_flag=True):
     if save_flag == True:
         type = re.sub(' ','',type)
-        filename = r"bin/img/"+repr(id)+type+".png"
+        filename = f"bin/img/{id:.1f}{type}.png"
         cv2.imwrite(filename.format(),frame)
 
 def is_ready(text):
@@ -45,7 +46,34 @@ def is_ready(text):
         text == "REAOY"
         ))
 
-def read_frame(frame_in, xa=0, xb=0, ya=0, yb=0, threshold=175, regex='[^A-Za-z0-9]+', extensive=False, time_id=0, description=""):
+#r140to240
+#g200to249
+#b216to254
+
+def read_fighter(frame_in, xa=0, xb=0, ya=0, yb=0, threshold=175, regex='[^A-Za-z0-9]+', time_id=0, description=""):
+    frame_cropped = frame_in[ya:yb, xa:xb]
+    frame_resized = cv2.resize(frame_cropped, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
+
+    lower = np.array([216, 190 , 140])
+    upper = np.array([255, 255, 255])
+    frame_filtered = cv2.inRange(frame_resized, lower, upper)
+    
+    frame_inverted = cv2.bitwise_not(frame_filtered)
+
+    frame_out = frame_inverted
+
+    psm11 = pytesseract.image_to_string(frame_out, config='--psm 11 --oem 3 -c tessedit_char_whitelist=ABCDEFGHJIKLMNOPQRSTUVWXY')
+    psm13 = pytesseract.image_to_string(frame_out, config='--psm 13 --oem 3 -c tessedit_char_whitelist=ABCDEFGHJIKLMNOPQRSTUVWXYZ')
+
+    psm11_out = re.sub(regex,'',psm11)
+    psm13_out = re.sub(regex,'',psm13)
+
+    if time_id > 0:
+        save_frame(frame_out, time_id, f"{description},{psm11_out},{psm13_out}")
+
+    return psm11_out, psm13_out
+
+def read_frame(frame_in, xa=0, xb=0, ya=0, yb=0, threshold=175, regex='[^A-Za-z0-9-]+', time_id=0, description=""):
     if xb > 0 or yb > 0:
         frame_cropped = frame_in[ya:yb, xa:xb]
         frame_resized = cv2.resize(frame_cropped, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
@@ -55,25 +83,15 @@ def read_frame(frame_in, xa=0, xb=0, ya=0, yb=0, threshold=175, regex='[^A-Za-z0
         frame_out = frame_invert
     else:
         frame_out = frame_in
-    
+
+    psm11 =  pytesseract.image_to_string(frame_out, config="--psm 11")
+
+    psm11_out = re.sub(regex,'',psm11)
+
     if time_id > 0:
-        save_frame(frame_out, time_id, description)
+        save_frame(frame_out, time_id, f"{description},{psm11_out}")
 
-    if extensive:
-        psm11 =  pytesseract.image_to_string(frame_out, config='--psm 11 --oem 3 -c tessedit_char_whitelist=ABCDEFGHJIKLMNOPQRSTUVWXY')
-        psm13 =  pytesseract.image_to_string(frame_out, config='--psm 13 --oem 3 -c tessedit_char_whitelist=ABCDEFGHJIKLMNOPQRSTUVWXYZ')
-
-        psm11_out = re.sub(regex,'',psm11)
-        psm13_out = re.sub(regex,'',psm13)
-
-        return psm11_out, psm13_out
-
-    else:
-        psm11 =  pytesseract.image_to_string(frame_out, config="--psm 11")
-
-        psm11_out = re.sub(regex,'',psm11)
-
-        return psm11_out
+    return psm11_out
 
 def match_object(frame_in, xa, xb, ya, yb):
     frame = frame_in[ya:yb , xa:xb]
@@ -120,6 +138,14 @@ class YoutubeCapture:
         self.log_path = log_path
         self.img_path = "/bin/"+img_path
 
+        #init variables
+        self.cap = None
+        self.opponent_name = None
+        self.opponent_fighter = None
+        self.opponent_rank = None
+        self.match_count = 0
+        self.match_link = None
+
         #extract metadata with youtube-dl
         ydl_opts={}
         ydl=youtube_dl.YoutubeDL(ydl_opts)
@@ -133,7 +159,7 @@ class YoutubeCapture:
                 pass
 
         #create cv2 object using url
-        self.playback_time = 9100
+        self.playback_time = 12800
         self.cap = cv2.VideoCapture(direct_url)
         self.cap.set(cv2.CAP_PROP_POS_MSEC, sec_to_ms(self.playback_time))
 
@@ -203,6 +229,7 @@ class YoutubeCapture:
         self.match_count = None
         self.match_outcome = None
         self.postmatch_rating = None
+        self.match_link = None
 
     def save_result(self):
         with open(self.log_path, "a") as csvfile:
@@ -228,7 +255,7 @@ if __name__ == "__main__":
     pregame_interval = 2
     ingame_interval = 5
     postgame_interval = 0.3
-    start_rating = 28480
+    start_rating = 32740
 
     #alphanumeric sort key from https://stackoverflow.com/a/2669120
     convert = lambda text: int(text) if text.isdigit() else text
@@ -312,6 +339,7 @@ if __name__ == "__main__":
     #finite state machine
     while True:
         if yt.playback_time >= yt.video_length:
+            yt.playback_time == yt.video_length
             print(f"[DEBUG@{yt.get_time()}] VOD finished")
             state == "after"
 
@@ -329,7 +357,7 @@ if __name__ == "__main__":
                             ya=570, 
                             yb=590, 
                             time_id=yt.get_time(),
-                            description=f"{state}_tRankedMatch")
+                            description="_tRankedMatch")
             #check for trigger
             if "RankedMatch" in trigger:
                 print(f"[EVENT@{yt.get_time()}] Tekken Launched")
@@ -354,8 +382,8 @@ if __name__ == "__main__":
                             xb=60,
                             ya=0,
                             yb=25,
-                            time_id=1,
-                            description='fps')
+                            time_id=yt.get_time(),
+                            description='_fps')
             #if fps counter is not present
             if not "fps" in fps_temp:
                 #increment counter
@@ -378,7 +406,7 @@ if __name__ == "__main__":
                             yb=560, 
                             threshold=190,
                             time_id=yt.get_time(),
-                            description=f"{state}_tSTAGE")
+                            description="_tSTAGE")
             #check for trigger
             if "STAGE" in trigger:
                 print(f"[EVENT@{yt.get_time()}] Entering Lobby")
@@ -391,7 +419,7 @@ if __name__ == "__main__":
                                 ya=520, 
                                 yb=570, 
                                 time_id=yt.get_time(),
-                                description=f"{state}_kazuya")
+                                description="_kazuya")
                 #if entering training
                 if "KAZUYA" in kazuya_temp:
                     #increment video playback time
@@ -402,15 +430,14 @@ if __name__ == "__main__":
                     while not valid_fighter:
                         #find opponent fighter
                         for width in crop_widths:
-                            fighter_temp = read_frame(
+                            fighter_temp = read_fighter(
                                         frame_in=frame, 
                                         xa=width, 
                                         xb=1250, 
                                         ya=450, 
                                         yb=500,
-                                        extensive=True,
                                         time_id=yt.get_time(),
-                                        description=f"{state}_opponent fighter")
+                                        description="_opponentfighter")
                             #check if valid fighter
                             for fighter in fighter_list:
                                 for string in fighter_temp:
@@ -426,7 +453,7 @@ if __name__ == "__main__":
                                             ya=540,
                                             yb=570,
                                             time_id=yt.get_time(),
-                                            description=f"{state}_opponent name")
+                                            description="_opponentname")
                                         
                                         #find opponent rank
                                         frame_rank = frame[530:575, 1140:1230]
@@ -462,7 +489,7 @@ if __name__ == "__main__":
                                             ya=520, 
                                             yb=570, 
                                             time_id=yt.get_time(),
-                                            description=f"{state}_kazuya")
+                                            description="_kazuya")
                             #if entering training
                             if "KAZUYA" in kazuya_temp:
                                 print(f"[EVENT@{yt.get_time()}] Mistaken. Leaving Lobby")
@@ -481,7 +508,7 @@ if __name__ == "__main__":
                                 #capture new frame
                                 frame = yt.get_frame()
                                 #img log
-                                save_frame(frame, yt.get_time(), state)                     
+                                save_frame(frame, yt.get_time(), state)
             #if no trigger, increment
             else:
                 #increment video playback time
@@ -501,7 +528,7 @@ if __name__ == "__main__":
                             ya=490,
                             yb=525,
                             time_id=yt.get_time(),
-                            description=f"{state}_tRating")
+                            description="_tRating")
             #check if number (rating) is present
             try:
                 trigger = int(re.sub(r'\D','',trigger))
@@ -539,7 +566,7 @@ if __name__ == "__main__":
                                 ya=490,
                                 yb=525,
                                 time_id=yt.get_time(),
-                                description=f"{state}_rating")
+                                description="_rating")
                 #try to read a number from rating_temp
                 try:
                     rating_temp = int(re.sub(r'\D','',rating_temp))
@@ -550,6 +577,39 @@ if __name__ == "__main__":
                     continue
                 #if number is present, update rating
                 else:
+                    #check for adjustment
+                    adjustment_temp = read_frame(
+                                frame_in=frame,
+                                xa=642,
+                                xb=680,
+                                ya=492,
+                                yb=510,
+                                threshold=50,
+                                time_id=yt.get_time(),
+                                description="_radj")
+                    #if negative adjustment
+                    if '-' in adjustment_temp:
+                         #see if there is a number
+                        try:
+                            adjustment = int(re.sub(r'\D','',adjustment_temp))
+                        #if not, ignore adjustment
+                        except ValueError:
+                            pass
+                        #if there is a number, apply the adjustment
+                        else:
+                            rating_temp -= adjustment
+                    #if positive adustment (or no adjustment)
+                    else:
+                        #see if there is a number
+                        try:
+                            adjustment = int(re.sub(r'\D','',adjustment_temp))
+                        #if not, ignore adjustment
+                        except ValueError:
+                            pass
+                        #if there is a number, apply the adjustment
+                        else:
+                            rating_temp += adjustment
+
                     #determine match outcome
                     if(rating_temp < rating):
                         outcome = "Loss"
@@ -585,8 +645,8 @@ if __name__ == "__main__":
                 #check for rematch or black screen on postgame_interval
                 else:
                     while True:
-                        #check for ready signals, indicating a rematch
-                        player_ready = read_frame(
+                        #check for ready signals, indicating a rematch or end lobby
+                        player_intent = read_frame(
                                     frame_in=frame,
                                     threshold=50,
                                     xa=1220,
@@ -594,8 +654,8 @@ if __name__ == "__main__":
                                     ya=480,
                                     yb=500,
                                     time_id=yt.get_time(),
-                                    description=f"{state}_player ready")
-                        opponent_ready = read_frame(
+                                    description="_playerintent")
+                        opponent_intent = read_frame(
                                     frame_in=frame,
                                     threshold=50,
                                     xa=1210,
@@ -603,8 +663,21 @@ if __name__ == "__main__":
                                     ya=550,
                                     yb=580,
                                     time_id=yt.get_time(),
-                                    description=f"{state}_opponent ready")
-                        if is_ready(player_ready) and is_ready(opponent_ready):
+                                    description="_opponentintent")
+                        #check for 'cancel'
+                        if player_intent == "cancel" or opponent_intent == "cancel":
+                            yt.end_lobby()
+                            print(f"[EVENT@{yt.get_time()}] Leaving lobby with {opponent_name}")
+
+                            #advance video playback by minimum pre game length
+                            yt.skip_forward(6)
+                            
+                            #change state
+                            state = "pre game"
+
+                            break
+                        #check for 'ready'
+                        if is_ready(player_intent) and is_ready(opponent_intent):
                             yt.rematch()
                             print(f"[EVENT@{yt.get_time()}] Starting rematch against {opponent_name} ({opponent_fighter} - {opponent_rank})")
                                 
