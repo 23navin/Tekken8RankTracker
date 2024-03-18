@@ -226,7 +226,7 @@ class YoutubeCapture:
                 pass
 
         #create cv2 object using url
-        self.playback_time = 14324
+        self.playback_time = 0
         self.cap = cv2.VideoCapture(direct_url)
         self.cap.set(cv2.CAP_PROP_POS_MSEC, sec_to_ms(self.playback_time))
 
