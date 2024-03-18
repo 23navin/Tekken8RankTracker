@@ -1,0 +1,4 @@
+Images were downscaled to 74 × 37 images to match their size on a 720p game capture.
+Some rank images that did not match correctly were replaced with screengrabs from youtube vods.
+Low bitrate 720p videos after both Twitch and Youtube compression can have really bad matching with uncompressed images, even if they are the same resolution technically.
+Most of the time its fine, but if there are matching issues, it may be best to replace all with screengrabs to account for the compression. 

@@ -245,15 +245,15 @@ class YoutubeCapture:
             with open("bin/log.csv","x") as file:
                 pen = csv.writer(file)
                 pen.writerow([
-                                'VOD_Date',
-                                'VOD_Timestamp',
-                                'Opponent_Name',
-                                'Opponent_Fighter',
-                                'Opponent_Rank',
-                                'Match_Count',
-                                'Match_Outcome',
-                                'Postmatch_Rating',
-                                'Youtube_Link'])
+                    'VOD_Date',
+                    'VOD_Timestamp',
+                    'Opponent_Name',
+                    'Opponent_Fighter',
+                    'Opponent_Rank',
+                    'Match_Count',
+                    'Match_Outcome',
+                    'Postmatch_Rating',
+                    'Youtube_Link'])
                 
         #create new img/ diretory
         mkdir_img()
@@ -302,15 +302,15 @@ class YoutubeCapture:
         with open(self.log_path, "a") as csvfile:
                 log = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
                 log.writerow([
-                                self.upload_date,
-                                int(self.playback_time),
-                                self.opponent_name,
-                                self.opponent_fighter,
-                                self.opponent_rank,
-                                self.match_count,
-                                self.match_outcome,
-                                self.postmatch_rating,
-                                self.match_link])
+                    self.upload_date,
+                    int(self.playback_time),
+                    self.opponent_name,
+                    self.opponent_fighter,
+                    self.opponent_rank,
+                    self.match_count,
+                    self.match_outcome,
+                    self.postmatch_rating,
+                    self.match_link])
 
 if __name__ == "__main__":
     #enable debug output
@@ -422,13 +422,13 @@ if __name__ == "__main__":
 
             #read text from cropped frame
             trigger = read_frame(
-                            frame_in=frame, 
-                            xa=600, 
-                            xb=690, 
-                            ya=570, 
-                            yb=590, 
-                            time_id=yt.get_time(),
-                            description="_tRankedMatch")
+                        frame_in=frame, 
+                        xa=600, 
+                        xb=690, 
+                        ya=570, 
+                        yb=590, 
+                        time_id=yt.get_time(),
+                        description="_tRankedMatch")
             #check for trigger
             if "RankedMatch" in trigger:
                 print(f"[EVENT@{yt.get_time()}] Tekken Launched")
@@ -448,13 +448,13 @@ if __name__ == "__main__":
 
             #check if fps counter is present
             fps_temp = read_frame(
-                            frame_in=frame,
-                            xa=0,
-                            xb=60,
-                            ya=0,
-                            yb=25,
-                            time_id=yt.get_time(),
-                            description='_fps')
+                        frame_in=frame,
+                        xa=0,
+                        xb=60,
+                        ya=0,
+                        yb=25,
+                        time_id=yt.get_time(),
+                        description='_fps')
             #if fps counter is not present
             if not "fps" in fps_temp:
                 #increment counter
@@ -470,14 +470,14 @@ if __name__ == "__main__":
 
             #read text from cropped frame
             trigger = read_frame(
-                            frame_in=frame, 
-                            xa=600, 
-                            xb=670, 
-                            ya=530, 
-                            yb=560, 
-                            threshold=190,
-                            time_id=yt.get_time(),
-                            description="_tSTAGE")
+                        frame_in=frame, 
+                        xa=600, 
+                        xb=670, 
+                        ya=530, 
+                        yb=560, 
+                        threshold=190,
+                        time_id=yt.get_time(),
+                        description="_tSTAGE")
             #check for trigger
             if "STAGE" in trigger:
                 print(f"[EVENT@{yt.get_time()}] Entering Lobby")
@@ -504,13 +504,13 @@ if __name__ == "__main__":
                         #find opponent fighter
                         for width in crop_widths:
                             fighter_temp = read_fighter(
-                                        frame_in=frame, 
-                                        xa=width, 
-                                        xb=1250, 
-                                        ya=450, 
-                                        yb=500,
-                                        time_id=yt.get_time(),
-                                        description="_opponentfighter")
+                                            frame_in=frame, 
+                                            xa=width, 
+                                            xb=1250, 
+                                            ya=450, 
+                                            yb=500,
+                                            time_id=yt.get_time(),
+                                            description="_opponentfighter")
                             #check if valid fighter
                             for fighter in fighter_list:
                                 for string in fighter_temp:
@@ -520,13 +520,13 @@ if __name__ == "__main__":
 
                                         #find opponent name
                                         opponent_name = read_frame(
-                                            frame_in=frame,
-                                            xa=830,
-                                            xb=1130,
-                                            ya=540,
-                                            yb=570,
-                                            time_id=yt.get_time(),
-                                            description="_opponentname")
+                                                        frame_in=frame,
+                                                        xa=830,
+                                                        xb=1130,
+                                                        ya=540,
+                                                        yb=570,
+                                                        time_id=yt.get_time(),
+                                                        description="_opponentname")
                                         
                                         #find opponent rank
                                         frame_rank_player = frame[530:575, 1140:1230]
@@ -605,13 +605,13 @@ if __name__ == "__main__":
 
             #search for number, indicating post game
             trigger = read_frame(
-                            frame_in=frame,
-                            xa=530,
-                            xb=630,
-                            ya=490,
-                            yb=525,
-                            time_id=yt.get_time(),
-                            description="_tRating")
+                        frame_in=frame,
+                        xa=530,
+                        xb=630,
+                        ya=490,
+                        yb=525,
+                        time_id=yt.get_time(),
+                        description="_tRating")
             #check if number (rating) is present
             try:
                 trigger = int(re.sub(r'\D','',trigger))
@@ -662,14 +662,14 @@ if __name__ == "__main__":
                 else:
                     #check for adjustment
                     adjustment_temp = read_frame(
-                                frame_in=frame,
-                                xa=630,
-                                xb=680,
-                                ya=492,
-                                yb=510,
-                                threshold=100,
-                                time_id=yt.get_time(),
-                                description="_radj")
+                                        frame_in=frame,
+                                        xa=630,
+                                        xb=680,
+                                        ya=492,
+                                        yb=510,
+                                        threshold=100,
+                                        time_id=yt.get_time(),
+                                        description="_radj")
                     #if negative adjustment
                     if '-' in adjustment_temp:
                          #see if there is a number
@@ -725,23 +725,23 @@ if __name__ == "__main__":
                     while True:
                         #check for ready signals, indicating a rematch or end lobby
                         player_intent = read_frame(
-                                    frame_in=frame,
-                                    threshold=50,
-                                    xa=1220,
-                                    xb=1270,
-                                    ya=480,
-                                    yb=500,
-                                    time_id=yt.get_time(),
-                                    description="_playerintent")
+                                        frame_in=frame,
+                                        threshold=50,
+                                        xa=1220,
+                                        xb=1270,
+                                        ya=480,
+                                        yb=500,
+                                        time_id=yt.get_time(),
+                                        description="_playerintent")
                         opponent_intent = read_frame(
-                                    frame_in=frame,
-                                    threshold=50,
-                                    xa=1210,
-                                    xb=1260,
-                                    ya=550,
-                                    yb=580,
-                                    time_id=yt.get_time(),
-                                    description="_opponentintent")
+                                            frame_in=frame,
+                                            threshold=50,
+                                            xa=1210,
+                                            xb=1260,
+                                            ya=550,
+                                            yb=580,
+                                            time_id=yt.get_time(),
+                                            description="_opponentintent")
                         #check for 'cancel'
                         if "CANCEL" in player_intent or "CANCEL" in opponent_intent:
                             yt.end_lobby()
