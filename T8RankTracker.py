@@ -52,6 +52,7 @@ def is_ready(text):
 
 class FrameRecognition:
     crop_widths = [850, 980, 1090, 1100]
+    kernel=np.ones((1,1),np.uint8)
 
     fighter_list = [
         'KAZUYA',
@@ -103,20 +104,57 @@ class FrameRecognition:
 
             self.rank_names.append(name)
 
-    def read_text(self, frame_in, xa, xb, ya, yb, threshold=175, invert=True, regex='[^A-Za-z0-9-]+', time_id=0, description=""):
+    def read_text(self, frame_in, xa, xb, ya, yb, threshold=175, invert=True, noisy=False, regex='[^A-Za-z0-9-]+', time_id=0, description=""):
         frame_cropped = frame_in[ya:yb, xa:xb]
         frame_resized = cv2.resize(frame_cropped, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
         frame_greyscale = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2GRAY)
         frame_blackwhite = cv2.threshold(frame_greyscale, threshold, 255, cv2.THRESH_BINARY)[1]
+        
         if invert:
-            frame_invert = cv2.bitwise_not(frame_blackwhite)
-            frame_out = frame_invert
+            frame_border = cv2.copyMakeBorder(frame_blackwhite, 30, 30, 30, 30, cv2.BORDER_CONSTANT, value=[0,0,0])
+            frame_invert = cv2.bitwise_not(frame_border)
         else:
-            frame_out = frame_blackwhite
-        frame_border = cv2.copyMakeBorder(frame_out, 30, 30, 30, 30, cv2.BORDER_CONSTANT, value=[255,255,255])
+            frame_border = cv2.copyMakeBorder(frame_blackwhite, 30, 30, 30, 30, cv2.BORDER_CONSTANT, value=[255,255,255])
+            frame_invert = frame_border
+        
+        if noisy:
+
+            frame_eroded = cv2.dilate(frame_invert, self.kernel, anchor=(0,0), iterations=2)
+            frame_dinvert = cv2.bitwise_not(frame_eroded)
+            frame_dilated=cv2.dilate(frame_dinvert,self.kernel,anchor=(0,0),iterations=2)
+            frame_udinvert = cv2.bitwise_not(frame_dilated)
+
+            psm13 =  pytesseract.image_to_string(frame_udinvert, config="--psm 6")
+            psm13_out = re.sub(regex,'',psm13)
+
+            if time_id > 0:
+                save_frame(frame_udinvert, time_id, f"{description},{psm13_out}")
+
+            return psm13_out
+        else:
+            frame_dinvert = cv2.bitwise_not(frame_invert)
+            frame_dilated=cv2.dilate(frame_dinvert,self.kernel,anchor=(0,0),iterations=2)
+            frame_udinvert = cv2.bitwise_not(frame_dilated)
+
+            psm11 =  pytesseract.image_to_string(frame_udinvert, config="--psm 11")
+            psm11_out = re.sub(regex,'',psm11)
+
+            if time_id > 0:
+                save_frame(frame_udinvert, time_id, f"{description},{psm11_out}")
+
+            return psm11_out
+
+    def read_rating(self, frame_in, xa=530, xb=630, ya=496, yb=522, threshold=175, time_id=0, description=""):
+        frame_cropped = frame_in[ya:yb, xa:xb]
+        frame_resized = cv2.resize(frame_cropped, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
+        frame_greyscale = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2GRAY)
+        frame_blackwhite = cv2.threshold(frame_greyscale, 175, 255, cv2.THRESH_BINARY)[1]
+        frame_invert = cv2.bitwise_not(frame_blackwhite)
+        frame_eroded = cv2.dilate(frame_invert, self.kernel, anchor=(0,0), iterations=2)
+        frame_border = cv2.copyMakeBorder(frame_eroded, 30, 30, 30, 30, cv2.BORDER_CONSTANT, value=[255,255,255])
 
         psm11 =  pytesseract.image_to_string(frame_border, config="--psm 11")
-        psm11_out = re.sub(regex,'',psm11)
+        psm11_out = re.sub('[^0-9]+','',psm11)
 
         if time_id > 0:
             save_frame(frame_border, time_id, f"{description},{psm11_out}")
@@ -130,11 +168,8 @@ class FrameRecognition:
         lower = np.array([216, 190 , 140])
         upper = np.array([255, 255, 255])
         frame_filtered = cv2.inRange(frame_resized, lower, upper)
-        
         frame_inverted = cv2.bitwise_not(frame_filtered)
-
-        kernel=np.ones((3,3),np.uint8)
-        frame_eroded = cv2.dilate(frame_inverted, kernel, anchor=(0,0), iterations=2)
+        frame_eroded = cv2.dilate(frame_inverted, self.kernel, anchor=(0,0), iterations=2)
 
         frame_out = frame_eroded
 
@@ -283,7 +318,7 @@ class YoutubeCapture:
         return round(self.playback_time,2)
     
     def get_url(self):
-        return f"https://youtu.be/{self.video_id}?t={int(self.playback_time)}"
+        return f"https://youtu.be/{self.video_id}?t={int(self.playback_time)}s"
     
     def new_lobby(self, player_fighter, player_rank, opponent_name, opponent_fighter, opponent_rank):
         self.player_fighter = player_fighter
@@ -318,7 +353,7 @@ class YoutubeCapture:
                 log = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
                 log.writerow([
                     self.upload_date,
-                    self.playback_time,
+                    self.get_time(),
                     self.player_fighter,
                     self.player_rank,
                     self.opponent_name,
@@ -350,6 +385,7 @@ class Tekken8RankTracker:
 
         #minimum amount of intervals for tekken to be closed before ending vod
         self.min_no_fps = 150
+        self.tekken_start = start_time
         self.tekken_end = end_time
 
         #setup video capture
@@ -439,7 +475,7 @@ class Tekken8RankTracker:
                     description='_fps'
                 )
                 #if fps counter is not present
-                if self.tekken_end == 0:
+                if self.tekken_end == 0 and self.tekken_start == 0:
                     if not "fps" in fps_temp:
                         #increment counter
                         no_fps += 1
@@ -464,7 +500,7 @@ class Tekken8RankTracker:
                     description="_tSTAGE"
                 )
                 #check for trigger
-                if "STAGE" in tSTAGE:
+                if "STAGE" in tSTAGE.upper():
                     print(f"[EVENT@{yt.get_time()}] Entering Lobby")
 
                     #check if delayed enter into training
@@ -657,6 +693,7 @@ class Tekken8RankTracker:
                                     xb=630,
                                     ya=496,
                                     yb=522,
+                                    noisy=True,
                                     time_id=yt.get_time(),
                                     description="_rating")
                     #try to read a number from rating_temp
