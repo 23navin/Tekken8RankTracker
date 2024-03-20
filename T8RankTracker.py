@@ -54,39 +54,39 @@ class FrameRecognition:
     crop_widths = [850, 980, 1090, 1100]
 
     fighter_list = [
-            'KAZUYA',
-            'JIN',
-            'KING',
-            'JUN',
-            'PAUL',
-            'LAW',
-            'JACK8',
-            'LARS',
-            'XIAOYU',
-            'NINA',
-            'LEROY',
-            'ASUKA',
-            'LILI',
-            'BRYAN',
-            'HWOARANG',
-            'CLAUDIO',
-            'AZUCENA',
-            'RAVEN',
-            'LEO',
-            'STEVE',
-            'KUMA',
-            'YOSHIMITSU',
-            'SHAHEEN',
-            'DRAGUNOV',
-            'FENG',
-            'PANDA',
-            'LEE',
-            'ALISA',
-            'ZAFINA',
-            'DEVILJIN',
-            'VICTOR',
-            'REINA'
-        ]
+        'KAZUYA',
+        'JIN',
+        'KING',
+        'JUN',
+        'PAUL',
+        'LAW',
+        'JACK8',
+        'LARS',
+        'XIAOYU',
+        'NINA',
+        'LEROY',
+        'ASUKA',
+        'LILI',
+        'BRYAN',
+        'HWOARANG',
+        'CLAUDIO',
+        'AZUCENA',
+        'RAVEN',
+        'LEO',
+        'STEVE',
+        'KUMA',
+        'YOSHIMITSU',
+        'SHAHEEN',
+        'DRAGUNOV',
+        'FENG',
+        'PANDA',
+        'LEE',
+        'ALISA',
+        'ZAFINA',
+        'DEVILJIN',
+        'VICTOR',
+        'REINA'
+    ]
 
     def __init__(self):
         #alphanumeric sort key from https://stackoverflow.com/a/2669120
@@ -103,28 +103,23 @@ class FrameRecognition:
 
             self.rank_names.append(name)
 
-    def read_text(self, frame_in, xa=0, xb=0, ya=0, yb=0, threshold=175, regex='[^A-Za-z0-9-]+', time_id=0, opening=False, description=""):
-        if xb > 0 or yb > 0:
-            frame_cropped = frame_in[ya:yb, xa:xb]
-            frame_resized = cv2.resize(frame_cropped, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
-            frame_greyscale = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2GRAY)
-            frame_blackwhite = cv2.threshold(frame_greyscale, threshold, 255, cv2.THRESH_BINARY)[1]
-            frame_border = cv2.copyMakeBorder(frame_blackwhite, 30,30,30,30,cv2.BORDER_CONSTANT)
-            frame_invert = cv2.bitwise_not(frame_border)
+    def read_text(self, frame_in, xa, xb, ya, yb, threshold=175, invert=True, regex='[^A-Za-z0-9-]+', time_id=0, description=""):
+        frame_cropped = frame_in[ya:yb, xa:xb]
+        frame_resized = cv2.resize(frame_cropped, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
+        frame_greyscale = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2GRAY)
+        frame_blackwhite = cv2.threshold(frame_greyscale, threshold, 255, cv2.THRESH_BINARY)[1]
+        if invert:
+            frame_invert = cv2.bitwise_not(frame_blackwhite)
             frame_out = frame_invert
         else:
-            frame_out = frame_in
+            frame_out = frame_blackwhite
+        frame_border = cv2.copyMakeBorder(frame_out, 30, 30, 30, 30, cv2.BORDER_CONSTANT, value=[255,255,255])
 
-        if opening:
-            kernelSize = (5, 5)
-            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, kernelSize)
-            frame_out = cv2.morphologyEx(frame_out, cv2.MORPH_OPEN, kernel)
-
-        psm11 =  pytesseract.image_to_string(frame_out, config="--psm 11")
+        psm11 =  pytesseract.image_to_string(frame_border, config="--psm 11")
         psm11_out = re.sub(regex,'',psm11)
 
         if time_id > 0:
-            save_frame(frame_out, time_id, f"{description},{psm11_out}")
+            save_frame(frame_border, time_id, f"{description},{psm11_out}")
 
         return psm11_out
 
@@ -138,7 +133,10 @@ class FrameRecognition:
         
         frame_inverted = cv2.bitwise_not(frame_filtered)
 
-        frame_out = frame_inverted
+        kernel=np.ones((3,3),np.uint8)
+        frame_eroded = cv2.dilate(frame_inverted, kernel, anchor=(0,0), iterations=2)
+
+        frame_out = frame_eroded
 
         psm11 = pytesseract.image_to_string(frame_out, config='--psm 11 --oem 3 -c tessedit_char_whitelist=ABCDEFGHJIKLMNOPQRSTUVWXY')
         psm13 = pytesseract.image_to_string(frame_out, config='--psm 13 --oem 3 -c tessedit_char_whitelist=ABCDEFGHJIKLMNOPQRSTUVWXYZ')
@@ -154,75 +152,18 @@ class FrameRecognition:
     def read_rank(self, frame_in, xa=0, xb=0, ya=0, yb=0, time_id=0, description=""):
         match_val = [None]*len(self.rank_images)
 
-        frame_cropped = frame_in[530:575, 390:480]
+        frame_cropped = frame_in[ya:yb, xa:xb]
         for idx, rank_img in enumerate(self.rank_images):
             res = cv2.matchTemplate(frame_cropped, rank_img, cv2.TM_SQDIFF)
             match_val[idx] = cv2.minMaxLoc(res)[0]
         index_min = min(range(len(match_val)), key=match_val.__getitem__)
-        return self.rank_names[index_min] 
 
-    def rank_rating_range(self,rank_name):
-        if rank_name == "Beginner":
-            return 0,999
-        elif rank_name == "1stDan":
-            return 0, 1599
-        elif rank_name == "2stDan":
-            return 400, 2599
-        elif rank_name == "Fighter":
-            return 1000, 3399
-        elif rank_name == "Strategist":
-            return 1600, 4199
-        elif rank_name == "Combatant":
-            return 2600, 5399
-        elif rank_name == "Brawler":
-            return 3400, 6399
-        elif rank_name == "Ranger":
-            return 4200, 7399
-        elif rank_name == "Cavalry":
-            return 5400, 9199
-        elif rank_name == "Warrior":
-            return 6400, 10799
-        elif rank_name == "Assailant":
-            return 7400, 12399
-        elif rank_name == "Dominator":
-            return 9200, 14699
-        elif rank_name == "Vanquisher":
-            return 10800, 16599
-        elif rank_name == "Destroyer":
-            return 12400, 18499
-        elif rank_name == "Eliminator":
-            return 14700, 23099
-        elif rank_name == "Garyu":
-            return 16600, 27299
-        elif rank_name == "Shinryu":
-            return 18500, 31499
-        elif rank_name == "Tenryu":
-            return 23100, 36499
-        elif rank_name == "MightyRuler":
-            return 27300, 41099
-        elif rank_name == "FlameRuler":
-            return 31500, 45699
-        elif rank_name == "BattleRuler":
-            return 36500, 52299
-        elif rank_name == "Fujin":
-            return 41100, 58499
-        elif rank_name == "Raijin":
-            return 45700, 64699
-        elif rank_name == "Kishin":
-            return 52300, 70899
-        elif rank_name == "Bushin":
-            return 58500, 79099
-        elif rank_name == "TekkenKing":
-            return 64700, 86899
-        elif rank_name == "TekkenEmperor":
-            return 70900, 97299
-        elif rank_name == "TekkenGod":
-            return 79100, 109699
-        elif rank_name == "TekkenGodSupreme":
-            return 87900, 200000
-        elif rank_name == "GodOfDestruction":
-            return 97300, 200000
+        rank_name = self.rank_names[index_min]
 
+        save_frame(frame_cropped, time_id, f"{description},{rank_name}")
+        
+        return rank_name
+    
     def match_object(self, frame_in, xa, xb, ya, yb):
         frame = frame_in[ya:yb , xa:xb]
         template = cv2.imread("assets/empty_dot.png", cv2.IMREAD_GRAYSCALE)
@@ -241,7 +182,6 @@ class FrameRecognition:
 
         thr = 0.3
         dot_locations = [2, 15, 27]
-
         winloss = None
 
         for loc in dot_locations:
@@ -378,7 +318,7 @@ class YoutubeCapture:
                 log = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
                 log.writerow([
                     self.upload_date,
-                    int(self.playback_time),
+                    self.playback_time,
                     self.player_fighter,
                     self.player_rank,
                     self.opponent_name,
@@ -435,60 +375,6 @@ class Tekken8RankTracker:
         self.min_no_fps = min_notekken / self.pregame_interval
 
     def run_fsm(self, initial_state="before"):
-        #alphanumeric sort key from https://stackoverflow.com/a/2669120
-        convert = lambda text: int(text) if text.isdigit() else text
-        alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)]
-
-        #import rank images
-        rank_images = [cv2.imread(file) for file in sorted(glob.glob("assets/ranks/*.png"), key=alphanum_key)]
-        filenames = sorted(glob.glob("assets/ranks/*.png"), key=alphanum_key)
-        match_val = [None]*len(rank_images)
-        rank_names = []
-        for filename in filenames:
-            name = filename.split("_")[1]
-            name = name.split(".")[0]
-
-            rank_names.append(name)
-            
-        #opponent fighter crop widths for ocr
-        crop_widths = [850, 980, 1090, 1100]
-
-        #tekken 8 fighters list
-        fighter_list = [
-            'KAZUYA',
-            'JIN',
-            'KING',
-            'JUN',
-            'PAUL',
-            'LAW',
-            'JACK8',
-            'LARS',
-            'XIAOYU',
-            'NINA',
-            'LEROY',
-            'ASUKA',
-            'LILI',
-            'BRYAN',
-            'HWOARANG',
-            'CLAUDIO',
-            'AZUCENA',
-            'RAVEN',
-            'LEO',
-            'STEVE',
-            'KUMA',
-            'YOSHIMITSU',
-            'SHAHEEN',
-            'DRAGUNOV',
-            'FENG',
-            'PANDA',
-            'LEE',
-            'ALISA',
-            'ZAFINA',
-            'DEVILJIN',
-            'VICTOR',
-            'REINA'
-        ]
-
         #tekken after counter
         no_fps = 0
         
@@ -518,7 +404,7 @@ class Tekken8RankTracker:
                 frame = yt.get_frame(state, self.imglog_flag)
 
                 #read text from cropped frame
-                trigger = fr.read_text(
+                tRankedMatch = fr.read_text(
                     frame_in=frame, 
                     xa=600, 
                     xb=690, 
@@ -528,7 +414,7 @@ class Tekken8RankTracker:
                     description="_tRankedMatch"
                 )
                 #check for trigger
-                if "RankedMatch" in trigger:
+                if "RankedMatch" in tRankedMatch:
                     print(f"[EVENT@{yt.get_time()}] Tekken Launched")
 
                     #change state
@@ -567,7 +453,7 @@ class Tekken8RankTracker:
                         no_fps = 0
 
                 #read text from cropped frame
-                trigger = fr.read_text(
+                tSTAGE = fr.read_text(
                     frame_in=frame, 
                     xa=600, 
                     xb=670, 
@@ -578,7 +464,7 @@ class Tekken8RankTracker:
                     description="_tSTAGE"
                 )
                 #check for trigger
-                if "STAGE" in trigger:
+                if "STAGE" in tSTAGE:
                     print(f"[EVENT@{yt.get_time()}] Entering Lobby")
 
                     #check if delayed enter into training
@@ -602,7 +488,7 @@ class Tekken8RankTracker:
                         valid_fighter = False
                         while not valid_fighter:
                             #find opponent fighter
-                            for width in crop_widths:
+                            for width in fr.crop_widths:
                                 fighter_temp = fr.read_fighter(
                                                 frame_in=frame, 
                                                 xa=width, 
@@ -613,7 +499,7 @@ class Tekken8RankTracker:
                                                 description="_opponentfighter"
                                 )
                                 #check if valid fighter
-                                for fighter in fighter_list:
+                                for fighter in fr.fighter_list:
                                     for string in fighter_temp:
                                         if fighter in string:
                                             opponent_fighter = fighter
@@ -658,7 +544,7 @@ class Tekken8RankTracker:
                         #if opponent fighter was identified
                         if valid_fighter:
                             #find player fighter
-                            for width in crop_widths:
+                            for width in fr.crop_widths:
                                 fighter_temp = fr.read_fighter(
                                                 frame_in=frame, 
                                                 xa=50, 
@@ -669,7 +555,7 @@ class Tekken8RankTracker:
                                                 description="_playerfighter"
                                 )
                                 #check if valid fighter
-                                for fighter in fighter_list:
+                                for fighter in fr.fighter_list:
                                     for string in fighter_temp:
                                         if fighter in string:
                                             player_fighter = fighter
@@ -683,12 +569,15 @@ class Tekken8RankTracker:
                                 break
 
                             #find player rank
-                            frame_rank_player = frame[530:575, 390:480]
-                            for idx, rank_img in enumerate(rank_images):
-                                res = cv2.matchTemplate(frame_rank_player, rank_img, cv2.TM_SQDIFF)
-                                match_val[idx] = cv2.minMaxLoc(res)[0]
-                            index_min = min(range(len(match_val)), key=match_val.__getitem__)
-                            player_rank = rank_names[index_min]
+                            player_rank = fr.read_rank(
+                                frame_in=frame,
+                                xa=390,
+                                xb=480,
+                                ya=530,
+                                yb=575,
+                                time_id=yt.get_time(),
+                                description="_playerrank"
+                            )
 
                             #find opponent name
                             opponent_name = fr.read_text(
@@ -703,15 +592,15 @@ class Tekken8RankTracker:
                             )
                             
                             #find opponent rank
-                            frame_rank_player = frame[530:575, 1140:1230]
-                            for idx, rank_img in enumerate(rank_images):
-                                res = cv2.matchTemplate(frame_rank_player, rank_img, cv2.TM_SQDIFF)
-                                match_val[idx] = cv2.minMaxLoc(res)[0]
-                            index_min = min(range(len(match_val)), key=match_val.__getitem__)
-                            opponent_rank = rank_names[index_min]
-
-                            #get rating range for ingame->postgame trigger
-                            min_rating, max_rating = fr.rank_rating_range(player_rank)
+                            opponent_rank = fr.read_rank(
+                                frame_in=frame,
+                                xa=1140,
+                                xb=1230,
+                                ya=530,
+                                yb=575,
+                                time_id=yt.get_time(),
+                                description="_opprank"
+                            )
 
                             yt.new_lobby(player_fighter, player_rank, opponent_name,opponent_fighter,opponent_rank)
                             print(f"[EVENT@{yt.get_time()}] Starting match Player ({player_fighter} - {player_rank}) vs. {opponent_name} ({opponent_fighter} - {opponent_rank})")
@@ -730,32 +619,25 @@ class Tekken8RankTracker:
                 #capture new frame
                 frame = yt.get_frame(state, self.imglog_flag)
 
-                #search for number, indicating post game
-                trigger = fr.read_text(
-                            frame_in=frame,
-                            xa=530,
-                            xb=630,
-                            ya=493,
-                            yb=523,
-                            opening=True,
-                            time_id=yt.get_time(),
-                            description="_tRating"
+                #search for trigger
+                tYou = fr.read_text(
+                        frame_in=frame,
+                        xa=521,
+                        ya=528,
+                        xb=540,
+                        yb=540,
+                        invert=False,
+                        time_id=yt.get_time(),
+                        description="_tYOU"
                 )
-                #check if number (rating) is present
-                try:
-                    trigger = int(re.sub(r'\D','',trigger))
-                #if number is not present, increment
-                except ValueError:
-                    #increment video playback time
-                    yt.skip_forward(self.ingame_interval)
-                #if number is present, change state
-                else:
-                    #only change if valid number (filter out numbers picked up unintentionally)
-                    if (min_rating - 1000) <= trigger <= (max_rating + 1000):
-                        print(f"[EVENT@{yt.get_time()}] Match concluded")
+                #if found, change state
+                if "You" in tYou:
+                    print(f"[EVENT@{yt.get_time()}] Match concluded")
 
-                    #change state
                     state = "post game"
+                #else increment
+                else:
+                    yt.skip_forward(self.ingame_interval)
 
             if state == "post game":
                 #capture new frame
@@ -764,7 +646,7 @@ class Tekken8RankTracker:
                 #search for dots, indicating no rematch possible
                 player_dots, opponent_dots, outcome = fr.count_match_dots(frame)
                 #if dots are not legible
-                if player_dots == -1 or opponent_dots == -1:
+                if player_dots == -1 or opponent_dots == -1 or outcome == None:
                     #skip forward and try to read again
                     yt.skip_forward(1)
                 else:
@@ -773,8 +655,8 @@ class Tekken8RankTracker:
                                     frame_in=frame,
                                     xa=530,
                                     xb=630,
-                                    ya=490,
-                                    yb=525,
+                                    ya=496,
+                                    yb=522,
                                     time_id=yt.get_time(),
                                     description="_rating")
                     #try to read a number from rating_temp
@@ -948,7 +830,7 @@ class Tekken8RankTracker:
                             frame = yt.get_frame(state, self.imglog_flag)
             
             if state == "after":
-                break
+                exit()
 
 #demo
 if __name__ == "__main__":
