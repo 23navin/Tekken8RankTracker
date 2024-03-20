@@ -61,7 +61,7 @@ class FrameRecognition:
         'JUN',
         'PAUL',
         'LAW',
-        'JACK8',
+        'JACK', #JACK-8 is hard for tesseract to read
         'LARS',
         'XIAOYU',
         'NINA',
@@ -84,7 +84,7 @@ class FrameRecognition:
         'LEE',
         'ALISA',
         'ZAFINA',
-        'DEVILJIN',
+        'DEVILJIN', #spaces are removed in tesseract post-processing
         'VICTOR',
         'REINA'
     ]
@@ -464,18 +464,18 @@ class Tekken8RankTracker:
                 #capture new frame
                 frame = yt.get_frame(state, self.imglog_flag)
 
-                #check if fps counter is present
-                fps_temp = fr.read_text(
-                    frame_in=frame,
-                    xa=0,
-                    xb=60,
-                    ya=0,
-                    yb=25,
-                    time_id=yt.get_time(),
-                    description='_fps'
-                )
-                #if fps counter is not present
                 if self.tekken_end == 0 and self.tekken_start == 0:
+                    #check if fps counter is present
+                    fps_temp = fr.read_text(
+                        frame_in=frame,
+                        xa=0,
+                        xb=60,
+                        ya=0,
+                        yb=25,
+                        time_id=yt.get_time(),
+                        description='_fps'
+                    )
+                    #if fps counter is not present
                     if not "fps" in fps_temp:
                         #increment counter
                         no_fps += 1
@@ -579,6 +579,12 @@ class Tekken8RankTracker:
                                     frame = yt.get_frame(state, self.imglog_flag)
                         #if opponent fighter was identified
                         if valid_fighter:
+                            #add non-alphanumerics back to name if applicable
+                            if opponent_fighter == "JACK":
+                                opponent_fighter = "JACK-8"
+                            if opponent_fighter == "DEVILJIN":
+                                opponent_fighter = "DEVIL JIN"
+
                             #find player fighter
                             for width in fr.crop_widths:
                                 fighter_temp = fr.read_fighter(
@@ -603,6 +609,12 @@ class Tekken8RankTracker:
                                 else:
                                     continue
                                 break
+                            
+                            #add non-alphanumerics back to name if applicable
+                            if player_fighter == "JACK":
+                                player_fighter = "JACK-8"
+                            if player_fighter == "DEVILJIN":
+                                player_fighter = "DEVIL JIN"
 
                             #find player rank
                             player_rank = fr.read_rank(
