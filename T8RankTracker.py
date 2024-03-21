@@ -104,7 +104,7 @@ class FrameRecognition:
 
             self.rank_names.append(name)
 
-    def read_text(self, frame_in, xa, xb, ya, yb, threshold=175, invert=True, noisy=False, regex='[^A-Za-z0-9-]+', time_id=0, description=""):
+    def read_text(self, frame_in, xa, xb, ya, yb, threshold=175, invert=True, noisy=False, regex='[^A-Za-z0-9-]+', time_id=0, description="", save_flag=False):
         frame_cropped = frame_in[ya:yb, xa:xb]
         frame_resized = cv2.resize(frame_cropped, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
         frame_greyscale = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2GRAY)
@@ -128,7 +128,7 @@ class FrameRecognition:
             psm13_out = re.sub(regex,'',psm13)
 
             if time_id > 0:
-                save_frame(frame_udinvert, time_id, f"{description},{psm13_out}")
+                save_frame(frame_udinvert, time_id, f"{description},{psm13_out}", save_flag)
 
             return psm13_out
         else:
@@ -140,11 +140,11 @@ class FrameRecognition:
             psm11_out = re.sub(regex,'',psm11)
 
             if time_id > 0:
-                save_frame(frame_udinvert, time_id, f"{description},{psm11_out}")
+                save_frame(frame_udinvert, time_id, f"{description},{psm11_out}", save_flag)
 
             return psm11_out
 
-    def read_rating(self, frame_in, xa=530, xb=630, ya=496, yb=522, threshold=175, time_id=0, description=""):
+    def read_rating(self, frame_in, xa=530, xb=630, ya=496, yb=522, time_id=0, description="", save_flag=False):
         frame_cropped = frame_in[ya:yb, xa:xb]
         frame_resized = cv2.resize(frame_cropped, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
         frame_greyscale = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2GRAY)
@@ -157,11 +157,11 @@ class FrameRecognition:
         psm11_out = re.sub('[^0-9]+','',psm11)
 
         if time_id > 0:
-            save_frame(frame_border, time_id, f"{description},{psm11_out}")
+            save_frame(frame_border, time_id, f"{description},{psm11_out}", save_flag)
 
         return psm11_out
 
-    def read_fighter(self, frame_in, xa=0, xb=0, ya=0, yb=0, threshold=175, regex='[^A-Za-z0-9]+', time_id=0, description=""):
+    def read_fighter(self, frame_in, xa=0, xb=0, ya=0, yb=0, regex='[^A-Za-z0-9]+', time_id=0, description="", save_flag=False):
         frame_cropped = frame_in[ya:yb, xa:xb]
         frame_resized = cv2.resize(frame_cropped, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
 
@@ -180,11 +180,11 @@ class FrameRecognition:
         psm13_out = re.sub(regex,'',psm13)
 
         if time_id > 0:
-            save_frame(frame_out, time_id, f"{description},{psm11_out},{psm13_out}")
+            save_frame(frame_out, time_id, f"{description},{psm11_out},{psm13_out}", save_flag)
 
         return psm11_out, psm13_out
     
-    def read_rank(self, frame_in, xa=0, xb=0, ya=0, yb=0, time_id=0, description=""):
+    def read_rank(self, frame_in, xa=0, xb=0, ya=0, yb=0, time_id=0, description="", save_flag=False):
         match_val = [None]*len(self.rank_images)
 
         frame_cropped = frame_in[ya:yb, xa:xb]
@@ -195,7 +195,7 @@ class FrameRecognition:
 
         rank_name = self.rank_names[index_min]
 
-        save_frame(frame_cropped, time_id, f"{description},{rank_name}")
+        save_frame(frame_cropped, time_id, f"{description},{rank_name}", save_flag)
         
         return rank_name
     
@@ -241,7 +241,7 @@ class YoutubeCapture:
     OUTCOME_LOSS = "Loss"
     RATING_UNKNOWN = "Unknown"
 
-    def __init__(self, youtube_url, format_id, playback_start=0, playback_end=0, log_path=r"bin/log.csv", img_path=r"bin/img"):
+    def __init__(self, youtube_url, format_id, playback_start=0, playback_end=0, vod_date=0, log_path=r"bin/log.csv", img_path=r"bin/img"):
         #save paths
         self.url = youtube_url
         self.log_path = log_path
@@ -282,7 +282,10 @@ class YoutubeCapture:
         self.video_id = info_dict.get('display_id')
 
         #get video upload date
-        self.upload_date = info_dict.get('epoch')
+        if vod_date == 0:
+            self.upload_date = info_dict.get('upload_date')
+        else:
+            self.upload_date = vod_date
 
         #find log file, or create if not present
         if not Path("bin/log.csv").exists():
@@ -290,8 +293,8 @@ class YoutubeCapture:
             with open("bin/log.csv","x") as file:
                 pen = csv.writer(file)
                 pen.writerow([
-                    'VOD_Upload_Epoch',
-                    'VOD_Timestamp (s)',
+                    'VOD_Date',
+                    'VOD_Timestamp',
                     'Player_Fighter',
                     'Player_Rank',
                     'Opponent_Name',
@@ -381,11 +384,7 @@ class Tekken8RankTracker:
     STATE_POSTGAMEINTENT = "postgame"
     STATE_AFTER = "after"
 
-    def __init__(self, vod_url, format='136', start_time=0, end_time=0, frame_log=True):
-        #set debug output
-        self.log_flag = True
-        self.imglog_flag = frame_log
-
+    def __init__(self, vod_url, format='136', start_time=0, end_time=0, vod_date=0):
         #vod input
         self.url = vod_url
 
@@ -412,7 +411,8 @@ class Tekken8RankTracker:
             youtube_url=vod_url,
             format_id=format,
             playback_start=start_time,
-            playback_end=end_time
+            playback_end=end_time,
+            vod_date=vod_date
         )
 
     def set_parameters(self,setup_int=10,pregame_int=2,ingame_int=5,postgame_int=0.3,min_pregame=12,min_match=90, min_notekken=300):
@@ -429,7 +429,11 @@ class Tekken8RankTracker:
         #minimum amount of time for tekken to be closed before ending vod
         self.min_no_fps = min_notekken / self.pregame_interval
 
-    def run_fsm(self, initial_state=STATE_BEFORE):
+    def run_fsm(self, initial_state=STATE_BEFORE, frame_log=False):
+        #set debug output
+        log_flag = True
+        imglog_flag = frame_log
+        
         #tekken after counter
         no_fps = 0
         
@@ -442,7 +446,7 @@ class Tekken8RankTracker:
         #set initial state
         state = initial_state
 
-        if self.log_flag == True:
+        if log_flag == True:
             print(f"\n\n[DEBUG@{yt.get_time()}] State Machine Starting")
 
         #finite state machine
@@ -458,7 +462,7 @@ class Tekken8RankTracker:
                     continue
 
                 #capture new frame
-                frame = yt.get_frame(state, self.imglog_flag)
+                frame = yt.get_frame(state, imglog_flag)
 
                 #read text from cropped frame
                 tRankedMatch = fr.read_text(
@@ -467,6 +471,7 @@ class Tekken8RankTracker:
                     xb=690, 
                     ya=570, 
                     yb=590, 
+                    save_flag=imglog_flag,
                     time_id=yt.get_time(),
                     description="_tRankedMatch"
                 )
@@ -492,7 +497,7 @@ class Tekken8RankTracker:
                     continue
 
                 #capture new frame
-                frame = yt.get_frame(state, self.imglog_flag)
+                frame = yt.get_frame(state, imglog_flag)
 
                 if self.tekken_end == 0 and self.tekken_start == 0:
                     #check if fps counter is present
@@ -502,6 +507,7 @@ class Tekken8RankTracker:
                         xb=60,
                         ya=0,
                         yb=25,
+                        save_flag=imglog_flag,
                         time_id=yt.get_time(),
                         description='_fps'
                     )
@@ -526,6 +532,7 @@ class Tekken8RankTracker:
                     ya=530, 
                     yb=560, 
                     threshold=190,
+                    save_flag=imglog_flag,
                     time_id=yt.get_time(),
                     description="_tSTAGE"
                 )
@@ -540,6 +547,7 @@ class Tekken8RankTracker:
                                     xb=1230, 
                                     ya=520, 
                                     yb=570, 
+                                    save_flag=imglog_flag,
                                     time_id=yt.get_time(),
                                     description="_kazuya"
                     )
@@ -561,6 +569,7 @@ class Tekken8RankTracker:
                                                 xb=1250, 
                                                 ya=450, 
                                                 yb=500,
+                                                save_flag=imglog_flag,
                                                 time_id=yt.get_time(),
                                                 description="_opponentfighter"
                                 )
@@ -587,6 +596,7 @@ class Tekken8RankTracker:
                                                 xb=1230, 
                                                 ya=520, 
                                                 yb=570, 
+                                                save_flag=imglog_flag,
                                                 time_id=yt.get_time(),
                                                 description="_kazuya"
                                 )
@@ -606,7 +616,7 @@ class Tekken8RankTracker:
                                     yt.skip_forward(0.5)
 
                                     #capture new frame
-                                    frame = yt.get_frame(state, self.imglog_flag)
+                                    frame = yt.get_frame(state, imglog_flag)
                         #if opponent fighter was identified
                         if valid_fighter:
                             #add non-alphanumerics back to name if applicable
@@ -623,6 +633,7 @@ class Tekken8RankTracker:
                                                 xb=450, 
                                                 ya=450, 
                                                 yb=500,
+                                                save_flag=imglog_flag,
                                                 time_id=yt.get_time(),
                                                 description="_playerfighter"
                                 )
@@ -653,6 +664,7 @@ class Tekken8RankTracker:
                                 xb=480,
                                 ya=530,
                                 yb=575,
+                                save_flag=imglog_flag,
                                 time_id=yt.get_time(),
                                 description="_playerrank"
                             )
@@ -665,6 +677,7 @@ class Tekken8RankTracker:
                                             ya=547,
                                             yb=563,
                                             threshold=170,
+                                            save_flag=imglog_flag,
                                             time_id=yt.get_time(),
                                             description="_opponentname"
                             )
@@ -676,6 +689,7 @@ class Tekken8RankTracker:
                                 xb=1230,
                                 ya=530,
                                 yb=575,
+                                save_flag=imglog_flag,
                                 time_id=yt.get_time(),
                                 description="_opprank"
                             )
@@ -713,7 +727,7 @@ class Tekken8RankTracker:
                     continue
 
                 #capture new frame
-                frame = yt.get_frame(state, self.imglog_flag)
+                frame = yt.get_frame(state, imglog_flag)
 
                 #search for trigger
                 tYou = fr.read_text(
@@ -723,6 +737,7 @@ class Tekken8RankTracker:
                         xb=540,
                         yb=540,
                         invert=False,
+                        save_flag=imglog_flag,
                         time_id=yt.get_time(),
                         description="_tYOU"
                 )
@@ -749,7 +764,7 @@ class Tekken8RankTracker:
                     continue
                 
                 #capture new frame
-                frame = yt.get_frame(state, self.imglog_flag)
+                frame = yt.get_frame(state, imglog_flag)
 
                 #search for dots, indicating no rematch possible
                 player_dots, opponent_dots, outcome = fr.count_match_dots(frame)
@@ -766,6 +781,7 @@ class Tekken8RankTracker:
                                     ya=496,
                                     yb=522,
                                     noisy=True,
+                                    save_flag=imglog_flag,
                                     time_id=yt.get_time(),
                                     description="_rating"
                     )
@@ -787,6 +803,7 @@ class Tekken8RankTracker:
                                             ya=492,
                                             yb=510,
                                             threshold=100,
+                                            save_flag=imglog_flag,
                                             time_id=yt.get_time(),
                                             description="_radj"
                         )
@@ -856,7 +873,7 @@ class Tekken8RankTracker:
                     continue
                 
                 #capture new frame
-                frame = yt.get_frame(state, self.imglog_flag)
+                frame = yt.get_frame(state, imglog_flag)
 
                 #check for ready signals, indicating a rematch or end lobby
                 player_intent = fr.read_text(
@@ -866,6 +883,7 @@ class Tekken8RankTracker:
                                 xb=1270,
                                 ya=480,
                                 yb=500,
+                                save_flag=imglog_flag,
                                 time_id=yt.get_time(),
                                 description="_playerintent"
                 )
@@ -876,6 +894,7 @@ class Tekken8RankTracker:
                                     xb=1260,
                                     ya=550,
                                     yb=580,
+                                    save_flag=imglog_flag,
                                     time_id=yt.get_time(),
                                     description="_opponentintent"
                 )
@@ -920,7 +939,7 @@ class Tekken8RankTracker:
                 yt.skip_forward(0.5)
 
                 #capture new frame
-                frame = yt.get_frame(state, self.imglog_flag)
+                frame = yt.get_frame(state, imglog_flag)
             
             if state == self.STATE_AFTER:
                 #break out of fsm loop
@@ -937,17 +956,18 @@ class Tekken8RankTracker:
                     continue
                 
                 #capture new frame
-                frame = yt.get_frame(state, self.imglog_flag)
+                frame = yt.get_frame(state, imglog_flag)
 
                 #check for ranked match (indicating left lobby) in case of rage quit
                 for r in range(self.igcheck):
-                    frame_check = yt.get_frame(state, self.imglog_flag)
+                    frame_check = yt.get_frame(state, imglog_flag)
                     check = fr.read_text(
                         frame_in=frame_check, 
                         xa=600, 
                         xb=690, 
                         ya=570, 
                         yb=590, 
+                        save_flag=imglog_flag,
                         time_id=yt.get_time(),
                         description="_cRankedMatch"
                     )
@@ -980,11 +1000,11 @@ if __name__ == "__main__":
     tracker = Tekken8RankTracker(
         #must provide a url to a youtube vod, that has a 720p option (format '136')
         vod_url='https://www.youtube.com/watch?v=NKpNzW7lXk0',
-        #when (in seconds) to start scraping (must be at least a couple seconds before starting matchmaking)
+        #optional: when (in seconds) to start recording (must be at least a couple seconds before starting matchmaking)
         start_time=3600,
-        #when (in seconds)to stop scraping (must be after leaving a lobby)
+        #optional: when (in seconds)to stop recording (must be after leaving a lobby)
         end_time=15420,
-        #set frame_log to False if you do not need to debug
+        #optional: set frame_log to False if you do not need to debug
         frame_log=True
     )
     #start scraping
