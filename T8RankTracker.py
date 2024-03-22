@@ -379,7 +379,8 @@ class Tekken8RankTracker:
     STATE_BEFORE = "before"
     STATE_PREGAME = "pregame"
     STATE_INGAME = "ingame"
-    STATE_INGAMEUNSURE = "ingamecheck"
+    STATE_INGAMEUNSURE = "rematchcheck"
+    STATE_PREGAMEWAIT = "ingamecheck"
     STATE_POSTGAMERESULT = "gameresult"
     STATE_POSTGAMEINTENT = "postgame"
     STATE_AFTER = "after"
@@ -396,7 +397,7 @@ class Tekken8RankTracker:
 
         #minimum length parameters
         self.min_pregame_length = 12
-        self.min_match_length = 90
+        self.min_match_length = 75
 
         #minimum amount of intervals for tekken to be closed before ending vod
         self.min_no_fps = 150
@@ -697,11 +698,11 @@ class Tekken8RankTracker:
                             yt.new_lobby(player_fighter, player_rank, opponent_name,opponent_fighter,opponent_rank)
                             print(f"[EVENT@{yt.get_time()}] Starting match Player ({player_fighter} - {player_rank}) vs. {opponent_name} ({opponent_fighter} - {opponent_rank})")
 
-                            #advance video playback by minimum match length
-                            yt.skip_forward(self.min_match_length)
+                            #advance video playback by minimum pre game length
+                            yt.skip_forward(self.min_pregame_length)
 
                             #change state
-                            state = self.STATE_INGAME
+                            state = self.STATE_PREGAMEWAIT
                 #if no trigger, increment
                 else:
                     #increment video playback time
@@ -898,8 +899,38 @@ class Tekken8RankTracker:
                                     time_id=yt.get_time(),
                                     description="_opponentintent"
                 )
+                player_intent_inv = fr.read_text(
+                                frame_in=frame,
+                                threshold=50,
+                                xa=1220,
+                                xb=1270,
+                                ya=480,
+                                yb=500,
+                                invert=False,
+                                save_flag=imglog_flag,
+                                time_id=yt.get_time(),
+                                description="_playerintentinv"
+                )
+                opponent_intent_inv = fr.read_text(
+                                    frame_in=frame,
+                                    threshold=50,
+                                    xa=1210,
+                                    xb=1260,
+                                    ya=550,
+                                    yb=580,
+                                    invert=False,
+                                    save_flag=imglog_flag,
+                                    time_id=yt.get_time(),
+                                    description="_opponentintentinv"
+                )
+
                 #check for 'cancel'
-                if "CANCEL" in player_intent or "CANCEL" in opponent_intent:
+                if any((
+                    "CANCEL" in player_intent.upper(),
+                    "CANCEL" in player_intent_inv.upper(),
+                    "CANCEL" in opponent_intent.upper(),
+                    "CANCEL" in opponent_intent_inv.upper()
+                )):
                     yt.end_lobby()
                     print(f"[EVENT@{yt.get_time()}] Leaving lobby with {opponent_name}")
 
@@ -944,6 +975,62 @@ class Tekken8RankTracker:
             if state == self.STATE_AFTER:
                 #break out of fsm loop
                 break
+
+            if state == self.STATE_PREGAMEWAIT:
+                #check if vod is over
+                if yt.playback_time >= yt.video_length:
+                    yt.playback_time == yt.video_length
+
+                    #change state
+                    print(f"[DEBUG@{yt.get_time()}] VOD finished")
+                    state = self.STATE_AFTER
+                    continue
+                
+                #capture new frame
+                frame = yt.get_frame(state, imglog_flag)
+
+                #check if left prematch lobby
+                tSTAGE = fr.read_text(
+                    frame_in=frame, 
+                    xa=600, 
+                    xb=670, 
+                    ya=530, 
+                    yb=560, 
+                    threshold=190,
+                    save_flag=imglog_flag,
+                    time_id=yt.get_time(),
+                    description="_tSTAGE"
+                )
+                #if still in lobby
+                if "STAGE" in tSTAGE.upper():
+                    yt.skip_forward(3)
+                else:
+                    tOK = fr.read_text(
+                        frame_in=frame, 
+                        xa=625, 
+                        xb=652, 
+                        ya=411, 
+                        yb=430, 
+                        save_flag=imglog_flag,
+                        time_id=yt.get_time(),
+                        description="_tOK"
+                    )
+                    #if connection error
+                    if "OK" in tOK.upper():
+                        print(f"[EVENT@{yt.get_time()}] Connection error. Leaving lobby with {opponent_name}")
+
+                        #advance playback by minimum pregame length
+                        yt.skip_forward(self.min_pregame_length)
+
+                        #change state
+                        state = self.STATE_PREGAME
+                    #else go to ingame
+                    else:
+                        #advance video playback by minimum match length
+                        yt.skip_forward(self.min_match_length)
+                        
+                        #change state
+                        state = self.STATE_INGAME
 
             if state == self.STATE_INGAMEUNSURE:
                 #check if vod is over
@@ -1003,9 +1090,10 @@ if __name__ == "__main__":
         #optional: when (in seconds) to start recording (must be at least a couple seconds before starting matchmaking)
         start_time=3600,
         #optional: when (in seconds)to stop recording (must be after leaving a lobby)
-        end_time=15420,
+        end_time=15420, 
+    )
+    #start scraping
+    tracker.run_fsm(
         #optional: set frame_log to False if you do not need to debug
         frame_log=True
     )
-    #start scraping
-    tracker.run_fsm()
