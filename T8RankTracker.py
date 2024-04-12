@@ -393,7 +393,7 @@ class Tekken8RankTracker:
         self.setup_interval = 10
         self.pregame_interval = 2
         self.ingame_interval = 3
-        self.postgame_interval = 0.1
+        self.postgame_interval = 5
 
         #minimum length parameters
         self.min_pregame_length = 12
@@ -583,6 +583,7 @@ class Tekken8RankTracker:
 
                                             break
                                     else:
+                                        opponent_fighter = None
                                         continue
                                     break
                                 else:
@@ -646,6 +647,7 @@ class Tekken8RankTracker:
 
                                             break
                                     else:
+                                        player_fighter = None
                                         continue
                                     break
                                 else:
@@ -863,121 +865,113 @@ class Tekken8RankTracker:
                     else:
                         state = self.STATE_POSTGAMEINTENT        
             
-            if state == self.STATE_POSTGAMEINTENT:
-                #check if vod is over
-                if yt.playback_time >= yt.video_length:
-                    yt.playback_time == yt.video_length
+            if state == self.STATE_POSTGAMEINTENT :
+                dynamic_interval = self.postgame_interval
 
-                    #change state
-                    print(f"[DEBUG@{yt.get_time()}] VOD finished")
-                    state = self.STATE_AFTER
-                    continue
-                
-                #capture new frame
-                frame = yt.get_frame(state, imglog_flag)
+                while state == self.STATE_POSTGAMEINTENT :
+                    #check if vod is over
+                    if yt.playback_time >= yt.video_length:
+                        yt.playback_time == yt.video_length
 
-                #check for ready signals, indicating a rematch or end lobby
-                player_intent = fr.read_text(
-                    frame_in=frame,
-                    threshold=50,
-                    xa=1220,
-                    xb=1270,
-                    ya=480,
-                    yb=500,
-                    save_flag=imglog_flag,
-                    time_id=yt.get_time(),
-                    description="_playerintent"
-                )
-                opponent_intent = fr.read_text(
-                    frame_in=frame,
-                    threshold=50,
-                    xa=1210,
-                    xb=1260,
-                    ya=550,
-                    yb=580,
-                    save_flag=imglog_flag,
-                    time_id=yt.get_time(),
-                    description="_opponentintent"
-                )
-                player_intent_inv = fr.read_text(
-                    frame_in=frame,
-                    threshold=50,
-                    xa=1220,
-                    xb=1270,
-                    ya=480,
-                    yb=500,
-                    invert=False,
-                    save_flag=imglog_flag,
-                    time_id=yt.get_time(),
-                    description="_playerintentinv"
-                )
-                opponent_intent_inv = fr.read_text(
-                    frame_in=frame,
-                    threshold=50,
-                    xa=1210,
-                    xb=1260,
-                    ya=550,
-                    yb=580,
-                    invert=False,
-                    save_flag=imglog_flag,
-                    time_id=yt.get_time(),
-                    description="_opponentintentinv"
-                )
+                        #save incomplete data
+                        yt.save_result()
 
-                #check for 'cancel'
-                if any((
-                    "CANCEL" in player_intent.upper(),
-                    "CANCEL" in player_intent_inv.upper(),
-                    "CANCEL" in opponent_intent.upper(),
-                    "CANCEL" in opponent_intent_inv.upper()
-                )):
-                    yt.end_lobby()
-                    print(f"[EVENT@{yt.get_time()}] Leaving lobby with {opponent_name}")
-
-                    #advance video playback by minimum pre game length
-                    yt.skip_forward(self.min_pregame_length)
+                        #change state
+                        print(f"[DEBUG@{yt.get_time()}] VOD finished")
+                        state = self.STATE_AFTER
+                        continue
                     
-                    #change state
-                    state = self.STATE_PREGAME
-                    continue
-                #check for 'ready'
-                if is_ready(player_intent) and is_ready(opponent_intent):
-                    yt.rematch()
-                    print(f"[EVENT@{yt.get_time()}] Starting rematch against {opponent_name} ({opponent_fighter} - {opponent_rank})")
-                    
-                    #advance video playback by minimum pre game length
-                    yt.skip_forward(self.min_pregame_length)
+                    #capture new frame
+                    frame = yt.get_frame(state, imglog_flag)
 
-                    #change state
-                    state = self.STATE_INGAMEUNSURE
-                
-                #check for leaving match
-                frame_black_cropped = frame[250:300, 500:800]
-                frame_black_grey = cv2.cvtColor(frame_black_cropped, cv2.COLOR_BGR2GRAY)
-                if cv2.countNonZero(frame_black_grey) == 0:
-                    #go back one interval
-                    yt.skip_forward(0-self.postgame_interval)
-                    #change inverval to 0.1 seconds by setting a flag
-                    #should catch ready/cancel logic
-                    #if reach this if statemetn with flag, end lobby as previous impl
+                    #search for dots, indicating no rematch possible
+                    player_dots, opponent_dots, outcome = fr.count_match_dots(frame)
+                    #if dots are not legible
+                    if player_dots == -1 or opponent_dots == -1 or outcome == None:
+                        #rewind playback by dynamic interval
+                        yt.skip_forward(-(dynamic_interval-0.1))
 
-                    #before rework
-                    yt.end_lobby()
-                    print(f"[EVENT@{yt.get_time()}] Leaving lobby with {opponent_name}")
+                        #adjust dynamic interval
+                        dynamic_interval /= 2
+                    else:
+                        #check for ready signals, indicating a rematch or end lobby
+                        player_intent = fr.read_text(
+                            frame_in=frame,
+                            threshold=50,
+                            xa=1220,
+                            xb=1270,
+                            ya=480,
+                            yb=500,
+                            save_flag=imglog_flag,
+                            time_id=yt.get_time(),
+                            description="_playerintent"
+                        )
+                        opponent_intent = fr.read_text(
+                            frame_in=frame,
+                            threshold=50,
+                            xa=1210,
+                            xb=1260,
+                            ya=550,
+                            yb=580,
+                            save_flag=imglog_flag,
+                            time_id=yt.get_time(),
+                            description="_opponentintent"
+                        )
+                        player_intent_inv = fr.read_text(
+                            frame_in=frame,
+                            threshold=50,
+                            xa=1220,
+                            xb=1270,
+                            ya=480,
+                            yb=500,
+                            invert=False,
+                            save_flag=imglog_flag,
+                            time_id=yt.get_time(),
+                            description="_playerintentinv"
+                        )
+                        opponent_intent_inv = fr.read_text(
+                            frame_in=frame,
+                            threshold=50,
+                            xa=1210,
+                            xb=1260,
+                            ya=550,
+                            yb=580,
+                            invert=False,
+                            save_flag=imglog_flag,
+                            time_id=yt.get_time(),
+                            description="_opponentintentinv"
+                        )
 
-                    #advance video playback by minimum pre game length
-                    yt.skip_forward(self.min_pregame_length - 6)
-                    
-                    #change state
-                    state = self.STATE_PREGAME
-                    continue
-                
-                #advance video playback
-                yt.skip_forward(self.postgame_interval)
+                        #check for 'cancel'
+                        if any((
+                            "CANCEL" in player_intent.upper(),
+                            "CANCEL" in player_intent_inv.upper(),
+                            "CANCEL" in opponent_intent.upper(),
+                            "CANCEL" in opponent_intent_inv.upper()
+                        )):
+                            yt.end_lobby()
+                            print(f"[EVENT@{yt.get_time()}] Leaving lobby with {opponent_name}")
 
-                #capture new frame
-                frame = yt.get_frame(state, imglog_flag)
-            
+                            #advance video playback by minimum pre game length
+                            yt.skip_forward(self.min_pregame_length)
+                            
+                            #change state
+                            state = self.STATE_PREGAME
+                            continue
+                        #check for 'ready'
+                        elif is_ready(player_intent) and is_ready(opponent_intent):
+                            yt.rematch()
+                            print(f"[EVENT@{yt.get_time()}] Starting rematch against {opponent_name} ({opponent_fighter} - {opponent_rank})")
+                            
+                            #advance video playback by minimum pre game length
+                            yt.skip_forward(self.min_pregame_length)
+
+                            #change state
+                            state = self.STATE_INGAMEUNSURE
+                        else:
+                            #rewind playback by dynamic interval
+                            yt.skip_forward(dynamic_interval)
+
             if state == self.STATE_AFTER:
                 #break out of fsm loop
                 break
@@ -1094,7 +1088,7 @@ if __name__ == "__main__":
         #must provide a url to a youtube vod, that has a 720p option (format '136')
         vod_url='https://www.youtube.com/watch?v=NKpNzW7lXk0',
         #optional: when (in seconds) to start recording (must be at least a couple seconds before starting matchmaking)
-        start_time=3600,
+        start_time=3860,
         #optional: when (in seconds)to stop recording (must be after leaving a lobby)
         end_time=15420, 
     )
