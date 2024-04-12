@@ -14,18 +14,13 @@ If you come across this project, and have any thoughts on either the Tekken or P
 
 1. Detect when player is in training but not looking for match
 2. Rating adj only tracks neg adjustments (filter red/blue channel)
-3. Tesseract has a hard time recognizing single-digit numbers (eg. a clean image of a '0' returns nothing, 'JACK-8' is read as 'JACK-B')
-4. Improve opponent name detection
-5. Docker is missing libraries and won't build
-6. Save incomplete postgame if vod ends early
-7. Seperate some while loops into their own states
-   1. Seperate entering match loop from pre game
-   2. Seperate waiting for rematch or leave lobby loop from post game
-8. Support higher resolutions
+3. Docker is missing libraries and won't build
+4. Put rank images on a neutral-grey background. May improve matching accuracy.
+   1. Vanquisher rank is often being identified as MighyRuler
+5. overhaul postgame detection and algorithm to speed it up (non-iterative)
 
 ## Features to add
 
-1. Automatically find all Tekken vods in a youtube channel
-2. Allow multiple resolutions
-3. Multithreading
-4. Graphical representation of data using React
+1. Allow multiple resolutions
+2. Multithreading
+3. Graphical representation of data using React
