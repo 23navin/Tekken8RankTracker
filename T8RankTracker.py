@@ -770,24 +770,6 @@ class Tekken8RankTracker:
                     #capture new frame
                     frame = yt.get_frame(state, imglog_flag)
 
-                    """
-                    read tekkenprowess
-                    if tekkenprowess:
-                        read training
-                        if training:
-                            backward(dyn-1)
-                            dyn/=2
-                        else:
-                            forward(dyn)
-                    else:
-                        read You
-                        if You:
-                            state = postgame_outcome
-                        else:
-                            backward(dyn-1)
-                        
-                    """
-                    
                     #check if still in ingame window
                     tpTEKKENPROWESS = fr.read_text(
                         frame_in=frame,
@@ -852,12 +834,28 @@ class Tekken8RankTracker:
                         if "You" in tYou:
                             yt.log_EVENT("Match concluded")
                             state = self.STATE_POSTGAMERESULT
+                            #go back a postgame interval to ensure that there is a match on next interval
+                            yt.skip_forward(-self.postgame_outcome_interval)
+
                         else:
                             #rewind playback to last interval
                             yt.skip_forward(-(dynamic_interval-1))
 
             if state == self.STATE_POSTGAMERESULT:
-                save_frame(frame, yt.get_time(), state, imglog_flag)
+                #check if vod is over
+                if yt.playback_time >= yt.video_length:
+                    yt.playback_time == yt.video_length
+
+                    #save incomplete data
+                    yt.save_result()
+
+                    #change state
+                    yt.log_DEBUG("VOD finished")
+                    state = self.STATE_AFTER
+                    continue
+                
+                #capture new frame
+                frame = yt.get_frame(state, imglog_flag)
                 
                 #search for dots, indicating no rematch possible
                 player_dots, opponent_dots, outcome = fr.count_match_dots(frame)
@@ -929,6 +927,7 @@ class Tekken8RankTracker:
                         yt.match_result(outcome, rating)
                         yt.save_result()
                         yt.log_EVENT(f"Match Result: {outcome} - Rating: {rating}")
+                    
                     #check if final match
                     if player_dots == 2 or opponent_dots == 2:
                         #set outcome
@@ -953,22 +952,7 @@ class Tekken8RankTracker:
                         state = self.STATE_PREGAME
                     #if intent unknown, change state
                     else:
-                        state = self.STATE_POSTGAMEINTENT        
-
-                #check if vod is over
-                if yt.playback_time >= yt.video_length:
-                    yt.playback_time == yt.video_length
-
-                    #save incomplete data
-                    yt.save_result()
-
-                    #change state
-                    yt.log_DEBUG("VOD finished")
-                    state = self.STATE_AFTER
-                    continue
-                
-                #capture new frame
-                frame = yt.get_frame(state, imglog_flag)
+                        state = self.STATE_POSTGAMEINTENT
 
             if state == self.STATE_POSTGAMEINTENT :
                 dynamic_interval = self.postgame_intent_interval
