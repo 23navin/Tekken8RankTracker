@@ -240,17 +240,62 @@ class FrameRecognition:
 
         return player_dots, opponent_dots, winloss
 
+class asciiColor:
+    END = '\033[0m'
+
+    #background
+    class bg:
+        BLACK = '\033[40m'
+        RED = '\033[41m'
+        GREEN = '\033[42m'
+        YELLOW = '\033[43m'
+        BLUE = '\033[44m'
+        MAGENTA = '\033[45m'
+        CYAN = '\033[46m'
+        WHITE = '\033[47m'
+
+        class bright:
+            BLACK = '\033[100m'
+            RED = '\033[101m'
+            GREEN = '\033[102m'
+            YELLOW = '\033[103m'
+            BLUE = '\033[104m'
+            MAGENTA = '\033[105m'
+            CYAN = '\033[106m'
+            WHITE = '\033[107m'
+
+    #foreground
+    class fg:
+        BLACK = '\033[30m'
+        RED = '\033[31m'
+        GREEN = '\033[32m'
+        YELLOW = '\033[33m'
+        BLUE = '\033[34m'
+        MAGENTA = '\033[35m'
+        CYAN = '\033[36m'
+        WHITE = '\033[37m'
+
+        class bright:
+            BLACK = '\033[90m'
+            RED = '\033[91m'
+            GREEN = '\033[92m'
+            YELLOW = '\033[93m'
+            BLUE = '\033[94m'
+            MAGENTA = '\033[95m'
+            CYAN = '\033[96m'
+            WHITE = '\033[97m'
+
+    class style:
+        bold = '\033[1m'
+        italic = '\033[3m'
+        underline = '\033[4m'
+        strike = '\033[9m'
+
 #class to handle youtube video stream and saving match information to log csv
 class YoutubeCapture:
     OUTCOME_WIN = "Win"
     OUTCOME_LOSS = "Loss"
     RATING_UNKNOWN = "Unknown"
-
-    class asciiColor:
-        CYAN = '\033[46m'
-        YELLOW = '\033[103m'
-        WHITE = '\033[97m'
-        END = '\033[0m'
 
     def __init__(self, youtube_url, format_id, playback_start=0, playback_end=0, vod_date=0, log_path=r"bin/log.csv", img_path=r"bin/img"):
         #save paths
@@ -322,12 +367,21 @@ class YoutubeCapture:
         #create new img/ diretory
         mkdir_img()
 
-    def log_EVENT(self, message):
-        print(f"[{self.asciiColor.CYAN}EVENT@{self.get_time()}{self.asciiColor.END}] {message}")
+    def log_EVENT(self, message="", italic=False ,note=""):
+        out = f"{asciiColor.bg.CYAN}EVENT@{self.get_time()}{asciiColor.END} "
+        if message:
+            if italic:
+                out += f"{asciiColor.style.italic}{message}{asciiColor.END}"
+            else:
+                out += f"{asciiColor.style.bold}{message}{asciiColor.END}"
+
+        if note:
+            out += f" {note}"
+
+        print(out)
 
     def log_DEBUG(self, message):
-        print(f"[{self.asciiColor.YELLOW}DEBUG@{self.get_time()}{self.asciiColor.END}] {message}")
-
+        print(f"{asciiColor.bg.YELLOW}DEBUG@{self.get_time()}{asciiColor.END} {message}")
     
     def get_frame(self, type, save_flag):
         ret, frame = self.cap.read()
@@ -484,8 +538,9 @@ class Tekken8RankTracker:
                 if yt.playback_time >= yt.video_length:
                     yt.playback_time == yt.video_length
 
+                    yt.log_EVENT("VOD Finished", True)
+
                     #change state
-                    yt.log_DEBUG("VOD finished")
                     state = self.STATE_AFTER
                     continue
 
@@ -505,7 +560,10 @@ class Tekken8RankTracker:
                 )
                 #check for trigger
                 if "RankedMatch" in tRankedMatch:
-                    yt.log_EVENT(f"Tekken Launched")
+                    yt.log_EVENT(
+                        message="Tekken Launched.",
+                        note="Entering matchmaking"
+                    )
 
                     #change state
                     state = self.STATE_PREGAME
@@ -519,8 +577,9 @@ class Tekken8RankTracker:
                 if yt.playback_time >= yt.video_length:
                     yt.playback_time == yt.video_length
                     
+                    yt.log_EVENT("VOD Finished", True)
+
                     #change state
-                    yt.log_DEBUG("VOD finished")
                     state = self.STATE_AFTER
                     continue
 
@@ -545,7 +604,7 @@ class Tekken8RankTracker:
                         no_fps += 1
                         #if no fps counter for 5 minutes, assume that tekken has been closed
                         if no_fps > self.min_no_fps:
-                            yt.log_EVENT(f"Tekken Closed")
+                            yt.log_EVENT("Tekken Closed")
 
                             state = self.STATE_AFTER
                     #reset tracker
@@ -566,7 +625,7 @@ class Tekken8RankTracker:
                 )
                 #check for trigger
                 if "STAGE" in tSTAGE.upper():
-                    yt.log_EVENT(f"Entering Lobby")
+                    yt.log_EVENT("Entering Lobby")
 
                     #check if delayed enter into training
                     kazuya_temp = fr.read_fighter(
@@ -581,7 +640,10 @@ class Tekken8RankTracker:
                     )
                     #if entering training
                     if "KAZUYA" in kazuya_temp:
-                        yt.log_EVENT(f"Mistaken. Leaving Lobby")
+                        yt.log_EVENT(
+                            message="Leaving Lobby.",
+                            note="Entering matchmaking"
+                        )
 
                         #increment video playback time
                         yt.skip_forward(self.pregame_interval)
@@ -631,7 +693,10 @@ class Tekken8RankTracker:
                                 )
                                 #if entering training
                                 if "KAZUYA" in kazuya_temp:
-                                    yt.log_EVENT(f"Mistaken. Leaving Lobby")
+                                    yt.log_EVENT(
+                                        message="Leaving Lobby.",
+                                        note="Entering matchmaking"
+                                    )
 
                                     #increment video playback time
                                     yt.skip_forward(self.pregame_interval)
@@ -714,7 +779,10 @@ class Tekken8RankTracker:
 
                             #if player is watching replay of last match
                             if opponent_name == yt.last_opponent_name:
-                                    yt.log_EVENT(f"Mistaken. Leaving Lobby")
+                                    yt.log_EVENT(
+                                        message="Leaving Lobby.",
+                                        note="Entering replay"
+                                    )
 
                                     #increment video playback time
                                     yt.skip_forward(self.min_pregame_length)
@@ -734,7 +802,10 @@ class Tekken8RankTracker:
                                 )
 
                                 yt.new_lobby(player_fighter, player_rank, opponent_name,opponent_fighter,opponent_rank)
-                                yt.log_EVENT(f"Starting match Player ({player_fighter} - {player_rank}) vs. {opponent_name} ({opponent_fighter} - {opponent_rank})")
+                                yt.log_EVENT(
+                                    message="Starting Match:",
+                                    note=f"Player ({player_fighter} - {player_rank}) vs. {opponent_name} ({opponent_fighter} - {opponent_rank})"
+                                )
 
                                 #advance video playback by minimum pre game length
                                 yt.skip_forward(self.min_pregame_length)
@@ -757,13 +828,23 @@ class Tekken8RankTracker:
                         outcome = yt.OUTCOME_LOSS
                         rating = yt.RATING_UNKNOWN
 
+                        if outcome == "Win":
+                            outcome_log = f"{asciiColor.fg.GREEN}{outcome}{asciiColor.END}"
+                        elif outcome == "Loss":
+                            outcome_log = f"{asciiColor.fg.RED}{outcome}{asciiColor.END}"
+                        else:
+                            outcome_log = outcome
+                        yt.log_EVENT(
+                            message="Match Result:",
+                            note=f"{outcome_log} - Rating: {asciiColor.style.underline}{rating}{asciiColor.END}"
+                        )
+
                         #save incomplete match
-                        yt.log_EVENT(f"Match Result: {outcome} - Rating: {rating}")
                         yt.match_result(outcome,rating)
                         yt.save_result()
 
                         #change state
-                        yt.log_DEBUG("VOD finished")
+                        yt.log_EVENT("VOD Finished", True)
                         state = self.STATE_AFTER
                         continue
 
@@ -850,7 +931,7 @@ class Tekken8RankTracker:
                     yt.save_result()
 
                     #change state
-                    yt.log_DEBUG("VOD finished")
+                    yt.log_EVENT("VOD finished", True)
                     state = self.STATE_AFTER
                     continue
                 
@@ -924,9 +1005,19 @@ class Tekken8RankTracker:
                                 rating_temp += adjustment
                         rating = rating_temp
 
+                        if outcome == "Win":
+                            outcome_log = f"{asciiColor.fg.GREEN}{outcome}{asciiColor.END}"
+                        elif outcome == "Loss":
+                            outcome_log = f"{asciiColor.fg.RED}{outcome}{asciiColor.END}"
+                        else:
+                            outcome_log = outcome
+                        yt.log_EVENT(
+                            message="Match Result:",
+                            note=f"{outcome_log} - Rating: {asciiColor.style.underline}{rating}{asciiColor.END}"
+                        )
+
                         yt.match_result(outcome, rating)
                         yt.save_result()
-                        yt.log_EVENT(f"Match Result: {outcome} - Rating: {rating}")
                     
                     #check if final match
                     if player_dots == 2 or opponent_dots == 2:
@@ -937,7 +1028,10 @@ class Tekken8RankTracker:
                             outcome = yt.OUTCOME_LOSS
 
                         yt.end_lobby()
-                        yt.log_EVENT(f"Leaving lobby with {opponent_name}")
+                        yt.log_EVENT(
+                            message="Leaving lobby",
+                            note=f"with {opponent_name}"
+                        )
 
                         #clear opponent variables
 
@@ -967,7 +1061,7 @@ class Tekken8RankTracker:
                         yt.save_result()
 
                         #change state
-                        yt.log_DEBUG("VOD finished")
+                        yt.log_EVENT("VOD finished", True)
                         state = self.STATE_AFTER
                         continue
                     
@@ -999,8 +1093,12 @@ class Tekken8RankTracker:
                         else:
                             outcome = yt.OUTCOME_LOSS
 
+                        yt.log_EVENT(
+                            message="Leaving lobby",
+                            note=f"with {opponent_name}"
+                        )
+
                         yt.end_lobby()
-                        yt.log_EVENT(f"Leaving lobby with {opponent_name}")
 
                         #clear opponent variables
 
@@ -1070,7 +1168,9 @@ class Tekken8RankTracker:
                             "CANCEL" in opponent_intent_inv.upper()
                         )):
                             yt.end_lobby()
-                            yt.log_EVENT(f"Leaving lobby with {opponent_name}")
+                            yt.log_EVENT(
+                                message="Leaving lobby",
+                                note=f"with {opponent_name}")
 
                             #advance video playback by minimum pre game length
                             yt.skip_forward(self.min_pregame_length)
@@ -1081,7 +1181,9 @@ class Tekken8RankTracker:
                         #check for 'ready'
                         elif (is_ready(player_intent) or is_ready(player_intent_inv)) and (is_ready(opponent_intent) or is_ready(opponent_intent_inv)):
                             yt.rematch()
-                            yt.log_EVENT(f"Starting rematch against {opponent_name} ({opponent_fighter} - {opponent_rank})")
+                            yt.log_EVENT(
+                                message="Starting rematch",
+                                note=f"against {opponent_name} ({opponent_fighter} - {opponent_rank})")
                             
                             #advance video playback by minimum pre game length
                             yt.skip_forward(self.min_pregame_length)
@@ -1102,7 +1204,7 @@ class Tekken8RankTracker:
                     yt.playback_time == yt.video_length
 
                     #change state
-                    yt.log_DEBUG("VOD finished")
+                    yt.log_EVENT("VOD finished", True)
                     state = self.STATE_AFTER
                     continue
                 
@@ -1137,7 +1239,10 @@ class Tekken8RankTracker:
                     )
                     #if connection error
                     if "OK" in tOK.upper():
-                        yt.log_EVENT(f"Connection error. Leaving lobby with {opponent_name}")
+                        yt.log_EVENT(
+                            message="Leaving Lobby.",
+                            note="Connection error"
+                        )
 
                         #advance playback by minimum pregame length
                         yt.skip_forward(self.min_pregame_length)
@@ -1158,7 +1263,7 @@ class Tekken8RankTracker:
                     yt.playback_time == yt.video_length
 
                     #change state
-                    yt.log_DEBUG("VOD finished")
+                    yt.log_EVENT("VOD finished", True)
                     state = self.STATE_AFTER
                     continue
                 
@@ -1181,7 +1286,9 @@ class Tekken8RankTracker:
                     #check for trigger
                     if "RankedMatch" in tRankedMatch:
                         #if ranked match, go to pregame
-                        yt.log_EVENT(f"Connection error. Leaving lobby with {opponent_name}")
+                        yt.log_EVENT(
+                            message="Connection error.",
+                            note=f"Leaving lobby with {opponent_name}")
 
                         #change state
                         state = self.STATE_PREGAME
