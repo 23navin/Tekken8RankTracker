@@ -245,7 +245,7 @@ class FrameRecognition:
         return player_dots, opponent_dots, winloss
 
 class asciiColor:
-    END = '\033[0m'
+    reset = '\033[0m'
 
     #background
     class bg:
@@ -371,12 +371,12 @@ class YoutubeCapture:
         mkdir_img()
 
     def log_EVENT(self, message="", italic=False ,note=""):
-        out = f"{asciiColor.bg.CYAN}EVENT@{self.get_time()}{asciiColor.END} "
+        out = f"{asciiColor.bg.CYAN}EVENT@{self.get_time()}{asciiColor.reset} "
         if message:
             if italic:
-                out += f"{asciiColor.style.italic}{message}{asciiColor.END}"
+                out += f"{asciiColor.style.italic}{message}{asciiColor.reset}"
             else:
-                out += f"{asciiColor.style.bold}{message}{asciiColor.END}"
+                out += f"{asciiColor.style.bold}{message}{asciiColor.reset}"
 
         if note:
             out += f" {note}"
@@ -384,7 +384,7 @@ class YoutubeCapture:
         print(out)
 
     def log_DEBUG(self, message):
-        print(f"{asciiColor.bg.YELLOW}DEBUG@{self.get_time()}{asciiColor.END} {message}")
+        print(f"{asciiColor.bg.YELLOW}DEBUG@{self.get_time()}{asciiColor.reset} {message}")
     
     def get_frame(self, type, save_flag):
         ret, frame = self.cap.read()
@@ -487,7 +487,7 @@ class Tekken8RankTracker:
     def set_parameters(
             self,setup_int=10,
             pregame_int=2,
-            ingame_int=10,
+            ingame_int=12,
             postgame_outcome_int=1,
             postgame_intent_int=5,
             min_pregame=12,
@@ -818,14 +818,14 @@ class Tekken8RankTracker:
                         rating = yt.RATING_UNKNOWN
 
                         if outcome == "Win":
-                            outcome_log = f"{asciiColor.fg.GREEN}{outcome}{asciiColor.END}"
+                            outcome_log = f"{asciiColor.fg.GREEN}{outcome}{asciiColor.reset}"
                         elif outcome == "Loss":
-                            outcome_log = f"{asciiColor.fg.RED}{outcome}{asciiColor.END}"
+                            outcome_log = f"{asciiColor.fg.RED}{outcome}{asciiColor.reset}"
                         else:
                             outcome_log = outcome
                         yt.log_EVENT(
                             message="Match Result:",
-                            note=f"{outcome_log} - Rating: {asciiColor.style.underline}{rating}{asciiColor.END}"
+                            note=f"{outcome_log} - Rating: {asciiColor.style.underline}{rating}{asciiColor.reset}"
                         )
 
                         #save incomplete match
@@ -995,14 +995,14 @@ class Tekken8RankTracker:
                         rating = rating_temp
 
                         if outcome == "Win":
-                            outcome_log = f"{asciiColor.fg.GREEN}{outcome}{asciiColor.END}"
+                            outcome_log = f"{asciiColor.fg.GREEN}{outcome}{asciiColor.reset}"
                         elif outcome == "Loss":
-                            outcome_log = f"{asciiColor.fg.RED}{outcome}{asciiColor.END}"
+                            outcome_log = f"{asciiColor.fg.RED}{outcome}{asciiColor.reset}"
                         else:
                             outcome_log = outcome
                         yt.log_EVENT(
                             message="Match Result:",
-                            note=f"{outcome_log} - Rating: {asciiColor.style.underline}{rating}{asciiColor.END}"
+                            note=f"{outcome_log} - Rating: {asciiColor.style.underline}{rating}{asciiColor.reset}"
                         )
 
                         yt.match_result(outcome, rating)
@@ -1320,7 +1320,6 @@ class Tekken8RankTracker:
             
         yt.log_DEBUG("Exiting State Machine")
 
-
 #demo
 if __name__ == "__main__":
     #initialize object
@@ -1328,8 +1327,7 @@ if __name__ == "__main__":
         #must provide a url to a youtube vod, that has a 720p option (format '136')
         vod_url='https://www.youtube.com/watch?v=NKpNzW7lXk0',
         #optional: when (in seconds) to start recording (must be at least a couple seconds before starting matchmaking)
-        start_time=14790,
-        # start_time=3895,
+        start_time=3895,
         #optional: when (in seconds)to stop recording (must be after leaving a lobby)
         end_time=15420, 
     )
