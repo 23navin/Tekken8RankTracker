@@ -626,10 +626,8 @@ class Tekken8RankTracker:
                 )
                 #check for trigger
                 if "STAGE" in tSTAGE.upper():
-                    yt.log_EVENT("Entering Lobby")
-
                     #check if delayed enter into training
-                    kazuya_temp = fr.read_fighter(
+                    tKAZUYA = fr.read_fighter(
                         frame_in=frame, 
                         xa=1060, 
                         xb=1230, 
@@ -637,21 +635,39 @@ class Tekken8RankTracker:
                         yb=570, 
                         save_flag=imglog_flag,
                         time_id=yt.get_time(),
-                        description="_kazuya"
+                        description="_tKAZUYA"
                     )
                     #if entering training
-                    if "KAZUYA" in kazuya_temp:
-                        yt.log_EVENT(
-                            message="Leaving Lobby.",
-                            note="Entering matchmaking"
-                        )
+                    if "KAZUYA" in tKAZUYA:
 
                         #increment video playback time
                         yt.skip_forward(self.pregame_interval)
                     #if entering match
                     else:
+                        yt.log_EVENT("Entering Lobby")
+
                         valid_fighter = False
                         while not valid_fighter:
+                            tSTAGE = fr.read_text(
+                                frame_in=frame, 
+                                xa=600, 
+                                xb=670, 
+                                ya=530, 
+                                yb=560, 
+                                threshold=190,
+                                save_flag=imglog_flag,
+                                time_id=yt.get_time(),
+                                description="_tSTAGE"
+                            )
+                            if not "STAGE" in tSTAGE.upper():
+                                valid_fighter = True
+                                opponent_fighter = None
+
+                                yt.skip_forward(-0.5)
+                                frame = yt.get_frame(state, imglog_flag)
+
+                                break
+
                             #find opponent fighter
                             for width in fr.crop_widths:
                                 fighter_temp = fr.read_fighter(
@@ -682,7 +698,7 @@ class Tekken8RankTracker:
                             #if invalid fighter, check for training and increment
                             else:
                                 #check if delayed enter into training ('kazuya' text can be missed by ocr during an animation)
-                                kazuya_temp = fr.read_text(
+                                tKAZUYA = fr.read_text(
                                     frame_in=frame, 
                                     xa=1060, 
                                     xb=1230, 
@@ -693,7 +709,7 @@ class Tekken8RankTracker:
                                     description="_kazuya"
                                 )
                                 #if entering training
-                                if "KAZUYA" in kazuya_temp:
+                                if "KAZUYA" in tKAZUYA:
                                     yt.log_EVENT(
                                         message="Leaving Lobby.",
                                         note="Entering matchmaking"
@@ -839,6 +855,35 @@ class Tekken8RankTracker:
 
                     #capture new frame
                     frame = yt.get_frame(state, imglog_flag)
+
+                    tReplayHUD = fr.read_text(
+                        frame_in=frame,
+                        xa=286,
+                        ya=680,
+                        xb=905,
+                        yb=702,
+                        threshold=120,
+                        save_flag=imglog_flag,
+                        time_id=yt.get_time(),
+                        description="_tReplayHUD"
+                    ).lower()
+                    print(tReplayHUD)
+                    if any((
+                        "previous" in tReplayHUD,
+                        "next" in tReplayHUD,
+                        "round" in tReplayHUD,
+                        "menu" in tReplayHUD
+                    )):
+                        yt.log_EVENT(
+                            message="Leaving Lobby.",
+                            note="Player is watching a replay"
+                        )
+
+                        #increment playback time
+                        yt.skip_forward(self.min_pregame_length)
+
+                        #change state
+                        state = self.STATE_BEFORE
 
                     #check if still in ingame window
                     tpTEKKENPROWESS = fr.read_text(
