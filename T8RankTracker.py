@@ -1116,8 +1116,19 @@ class Tekken8RankTracker:
                         #adjust dynamic interval
                         dynamic_interval /= 2
                         #prevent dynamic interval from getting too small and getting stuck
-                        if dynamic_interval < 0.1:
-                            dynamic_interval = 0.1
+                        if dynamic_interval < 0.05:
+                            yt.end_lobby()
+                            yt.log_EVENT(
+                                message="Leaving lobby",
+                                note=f"with {opponent_name}")
+
+                            #advance video playback by minimum pre game length
+                            yt.skip_forward(self.min_pregame_length)
+                            
+                            #change state
+                            state = self.STATE_PREGAME
+                            continue
+
                     #if postgame_outcome missed forced leave match
                     elif player_dots == 2 or opponent_dots == 2:
                         #set outcome
@@ -1214,9 +1225,7 @@ class Tekken8RankTracker:
                         #check for 'ready'
                         elif (is_ready(player_intent) or is_ready(player_intent_inv)) and (is_ready(opponent_intent) or is_ready(opponent_intent_inv)):
                             yt.rematch()
-                            yt.log_EVENT(
-                                message="Starting rematch",
-                                note=f"against {opponent_name} ({opponent_fighter} - {opponent_rank})")
+                            yt.log_EVENT(message="Starting rematch")
                             
                             #advance video playback by minimum pre game length
                             yt.skip_forward(self.min_pregame_length)
