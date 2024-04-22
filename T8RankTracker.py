@@ -867,7 +867,6 @@ class Tekken8RankTracker:
                         time_id=yt.get_time(),
                         description="_tReplayHUD"
                     ).lower()
-                    print(tReplayHUD)
                     if any((
                         "previous" in tReplayHUD,
                         "next" in tReplayHUD,
