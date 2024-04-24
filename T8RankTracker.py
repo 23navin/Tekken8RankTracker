@@ -824,6 +824,7 @@ class Tekken8RankTracker:
 
             if state == self.STATE_INGAME:
                 dynamic_interval = self.ingame_interval
+                escape_interval = None
                 while state == self.STATE_INGAME:
                     #check if vod is over
                     if yt.playback_time >= yt.video_length:
@@ -950,10 +951,37 @@ class Tekken8RankTracker:
                             state = self.STATE_POSTGAMERESULT
                             #go back a postgame interval to ensure that there is a match on next interval
                             yt.skip_forward(-self.postgame_outcome_interval)
-
                         else:
-                            #rewind playback to last interval
-                            yt.skip_forward(-(dynamic_interval-1))
+                            if escape_interval:
+                                if yt.playback_time == escape_interval:
+                                    del escape_interval
+                                    
+                                    #leave match, record loss
+                                    outcome = yt.OUTCOME_LOSS
+                                    rating = yt.RATING_UNKNOWN
+
+                                    if outcome == "Win":
+                                        outcome_log = f"{asciiColor.fg.GREEN}{outcome}{asciiColor.reset}"
+                                    elif outcome == "Loss":
+                                        outcome_log = f"{asciiColor.fg.RED}{outcome}{asciiColor.reset}"
+                                    else:
+                                        outcome_log = outcome
+                                    yt.log_EVENT(
+                                        message="Match Result:",
+                                        note=f"{outcome_log} - Rating: {asciiColor.style.underline}{rating}{asciiColor.reset}"
+                                    )
+
+                                    #save incomplete match
+                                    yt.match_result(outcome,rating)
+                                    yt.save_result()
+
+                                    state = self.STATE_PREGAME
+                                else:
+                                    #rewind playback to last interval
+                                    yt.skip_forward(-(dynamic_interval-1))
+                            #if escape has not been set
+                            else:
+                                escape_interval = yt.playback_time
 
             if state == self.STATE_POSTGAMERESULT:
                 #check if vod is over
