@@ -16,9 +16,10 @@ If you come across this project, and have any thoughts on either the Tekken or P
 2. Rating adj only tracks neg adjustments (filter red/blue channel)
 3. Docker is missing libraries and won't build
 4. Put rank images on a neutral-grey background. May improve matching accuracy.
-   1. Vanquisher rank may be mis-identified as MightyRuler
+   1. Vanquisher rank may be mis-identified as MightyRuler/Shinryu
    2. Destroyer rank may be mis-identified as Eliminator
    3. Brawler rank may be mis-identified as TekkenGod
+   4. Warrior rank may be mis-identified as Eliminator/Calvary
 5. use sequencematching for fighter detection
 6. Add more context to console logging
 7. pyTesseract reads numbers incorrectly sometimes (read 2550 as 2900)
