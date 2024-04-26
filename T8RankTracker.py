@@ -55,9 +55,9 @@ def is_TEKKENPROWESS(text):
     val = SequenceMatcher(None, "TEKKENPROWESS", text).ratio()
     return val > 0.4
 
-def is_match(reference, input_text, ratio=0.4):
+def is_match(reference, input_text, threshold=0.4):
     val = SequenceMatcher(None, reference, input_text).ratio()
-    return val > ratio
+    return val > threshold
 
 class FrameRecognition:
     crop_widths = [850, 980, 1090, 1100]
@@ -432,7 +432,6 @@ class YoutubeCapture:
         self.postmatch_rating = None
         self.match_link = None
         
-
     def save_result(self):
         with open(self.log_path, "a") as csvfile:
                 log = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
@@ -625,7 +624,7 @@ class Tekken8RankTracker:
                     description="_tSTAGE"
                 )
                 #check for trigger
-                if "STAGE" in tSTAGE.upper():
+                if is_match(tSTAGE.upper(), "STAGE"):
                     #check if delayed enter into training
                     tKAZUYA = fr.read_fighter(
                         frame_in=frame, 
@@ -825,6 +824,7 @@ class Tekken8RankTracker:
             if state == self.STATE_INGAME:
                 dynamic_interval = self.ingame_interval
                 escape_interval = None
+                escape_flag = None
                 while state == self.STATE_INGAME:
                     #check if vod is over
                     if yt.playback_time >= yt.video_length:
@@ -857,6 +857,23 @@ class Tekken8RankTracker:
                     #capture new frame
                     frame = yt.get_frame(state, imglog_flag)
 
+                    tOK = fr.read_text(
+                        frame_in=frame, 
+                        xa=625, 
+                        xb=652, 
+                        ya=398, 
+                        yb=430, 
+                        save_flag=imglog_flag,
+                        time_id=yt.get_time(),
+                        description="_tOK"
+                    )
+                    #if new rank dialog
+                    if "OK" in tOK.upper():
+                        yt.log_EVENT("Match concluded")
+                        state = self.STATE_POSTGAMERESULT
+                        continue
+                        
+                    #check if in replay
                     tReplayHUD = fr.read_text(
                         frame_in=frame,
                         xa=286,
@@ -924,12 +941,23 @@ class Tekken8RankTracker:
                             #rewind playback to last interval
                             yt.skip_forward(-(dynamic_interval-1))
                             
+                            escape_flag = True
+                            
                             #adjust dynamic interval
                             dynamic_interval /= 2
                             #prevent dynamic interval from getting too small and getting stuck
                             if dynamic_interval < 1:
                                 dynamic_interval = 1
                         else:
+                            #first forward after backwards
+                            if escape_flag:
+                                escape_flag = False
+                            #second consecutive forward
+                            elif escape_flag == False:
+                                #reset escape
+                                escape_flag = None
+                                escape_interval = None
+
                             #move playback forward
                             yt.skip_forward(dynamic_interval)
                     else:
@@ -954,8 +982,6 @@ class Tekken8RankTracker:
                         else:
                             if escape_interval:
                                 if yt.playback_time == escape_interval:
-                                    del escape_interval
-                                    
                                     #leave match, record loss
                                     outcome = yt.OUTCOME_LOSS
                                     rating = yt.RATING_UNKNOWN
@@ -977,11 +1003,17 @@ class Tekken8RankTracker:
 
                                     state = self.STATE_PREGAME
                                 else:
+                                    escape_flag = True
+                                    
                                     #rewind playback to last interval
                                     yt.skip_forward(-(dynamic_interval-1))
                             #if escape has not been set
                             else:
+                                escape_flag = True
                                 escape_interval = yt.playback_time
+
+                                #rewind playback to last interval
+                                yt.skip_forward(-(dynamic_interval-1))
 
             if state == self.STATE_POSTGAMERESULT:
                 #check if vod is over
@@ -998,6 +1030,31 @@ class Tekken8RankTracker:
                 
                 #capture new frame
                 frame = yt.get_frame(state, imglog_flag)
+
+                tKAZUYA = fr.read_fighter(
+                    frame_in=frame, 
+                    xa=1060, 
+                    xb=1230, 
+                    ya=520, 
+                    yb=570, 
+                    save_flag=imglog_flag,
+                    time_id=yt.get_time(),
+                    description="_tKAZUYA"
+                )
+                #if entering training
+                if "KAZUYA" in tKAZUYA:
+                    yt.log_EVENT(
+                        message="Leaving Lobby.",
+                        note="Match ended without an outcome"
+                    )
+
+                    #indicates opponent disconnected, save incomplete match
+                    yt.match_result(None, yt.RATING_UNKNOWN)
+                    yt.save_result()
+
+                    #change state
+                    state = self.STATE_PREGAME
+                    continue
                 
                 #search for dots, indicating no rematch possible
                 player_dots, opponent_dots, outcome = fr.count_match_dots(frame)
@@ -1035,7 +1092,7 @@ class Tekken8RankTracker:
                             xb=680,
                             ya=492,
                             yb=510,
-                            threshold=100,
+                            threshold=40,
                             save_flag=imglog_flag,
                             time_id=yt.get_time(),
                             description="_radj"
@@ -1061,8 +1118,7 @@ class Tekken8RankTracker:
                                 pass
                             #if there is a number, apply the adjustment
                             else:
-    
-                        #set rating
+                                #set rating
                                 rating_temp += adjustment
                         rating = rating_temp
 
@@ -1301,7 +1357,7 @@ class Tekken8RankTracker:
                         frame_in=frame, 
                         xa=625, 
                         xb=652, 
-                        ya=411, 
+                        ya=398, 
                         yb=430, 
                         save_flag=imglog_flag,
                         time_id=yt.get_time(),
