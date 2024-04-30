@@ -624,7 +624,7 @@ class Tekken8RankTracker:
                     description="_tSTAGE"
                 )
                 #check for trigger
-                if is_match(tSTAGE.upper(), "STAGE"):
+                if is_match(tSTAGE, "STAGE"):
                     #check if delayed enter into training
                     tKAZUYA = fr.read_fighter(
                         frame_in=frame, 
