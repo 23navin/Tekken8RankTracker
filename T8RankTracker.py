@@ -301,7 +301,7 @@ class YoutubeCapture:
     OUTCOME_LOSS = "Loss"
     RATING_UNKNOWN = "Unknown"
 
-    def __init__(self, youtube_url, format_id, playback_start=0, playback_end=0, vod_date=0, log_path=r"bin/log.csv", img_path=r"bin/img"):
+    def __init__(self, youtube_url, format_id, playback_start=0, playback_end=None, vod_date=None, log_path=r"bin/log.csv", img_path=r"bin/img"):
         #save paths
         self.url = youtube_url
         self.log_path = log_path
@@ -334,7 +334,7 @@ class YoutubeCapture:
         self.cap.set(cv2.CAP_PROP_POS_MSEC, sec_to_ms(self.playback_time))
         
         #get video length
-        if playback_end == 0:
+        if playback_end == None:
             self.video_length = info_dict.get('duration')
         else:
             self.video_length = playback_end
@@ -343,7 +343,7 @@ class YoutubeCapture:
         self.video_id = info_dict.get('display_id')
 
         #get video upload date
-        if vod_date == 0:
+        if vod_date == None:
             self.upload_date = info_dict.get('upload_date')
         else:
             self.upload_date = vod_date
@@ -470,20 +470,29 @@ class Tekken8RankTracker:
             return False
 
     #game states
-    STATE_BEFORE = "before"
-    STATE_PREGAME = "pregame"
-    STATE_LOBBY = "lobby"
+    STATE_BEFORE = "beforeState"
+    STATE_PREGAME = "pregameState"
+    STATE_LOBBY = "lobbyState"
     EXIT_LOBBY = "lobbyExit"
-    ENTRY_INGAME = "ingameEntry"
-    STATE_INGAME = "ingame"
-    STATE_INGAMEUNSURE = "rematchcheck"
-    STATE_PREGAMEWAIT = "ingamecheck"
-    STATE_POSTGAMERESULT = "gameresult"
+    ENTRY_INGAME = "ingameEntryState"
+    STATE_INGAME = "ingameState"
+    STATE_INGAMEUNSURE = "rematchcheckState"
+    STATE_PREGAMEWAIT = "ingamecheckState"
+    STATE_POSTGAMERESULT = "gameresultState"
     ENTRY_POSTGAMEINTENT = "postgameEntry"
-    STATE_POSTGAMEINTENT = "postgame"
-    STATE_AFTER = "after"
+    STATE_POSTGAMEINTENT = "postgameState"
+    STATE_AFTER = "afterState"
 
-    def __init__(self, vod_url, format='136', start_time=0, end_time=0, vod_date=0, frame_log=False, initial_state=STATE_BEFORE):
+    #states that do not need a new frame
+    ignore_frame_states = [
+        STATE_LOBBY,
+        EXIT_LOBBY,
+        ENTRY_INGAME,
+        ENTRY_POSTGAMEINTENT,
+        STATE_AFTER
+    ]
+
+    def __init__(self, vod_url: str, format:str='136', start_time:int=0, end_time:int=None, vod_date:int=None, frame_log:bool=False, initial_state=STATE_BEFORE):
         #vod input
         self.url = vod_url
 
@@ -510,13 +519,15 @@ class Tekken8RankTracker:
         #setup api
         self.info = self.api(initial_state, start_time)
 
-        #setup l
+        #setup log flags
         self.log_flag = True
         self.imglog_flag = frame_log
 
+        #setup fsm variables that have initial states
         self.no_fps = 0
         self.state = initial_state
         self.frame = None
+        self.get_frame_flag = False
 
     def set_parameters(
             self,setup_int=10,
@@ -543,9 +554,15 @@ class Tekken8RankTracker:
         self.min_no_fps = min_notekken / self.pregame_interval
 
     def run_fsm(self):
+        #check if a new frame is not required
+        if self.state not in self.ignore_frame_states:
+            #capture new frame
+            self.frame = self.yt.get_frame(self.state, self.imglog_flag)
+
         #update API
         self.info.update(self.state, self.yt.playback_time, self.frame)
 
+        #---FSM---
         if self.state == self.STATE_BEFORE:
             #check if vod is over
             if self.yt.playback_time >= self.yt.video_length:
@@ -556,9 +573,6 @@ class Tekken8RankTracker:
                 #change state
                 self.state = self.STATE_AFTER
                 return
-
-            #capture new frame
-            self.frame = self.yt.get_frame(self.state, self.imglog_flag)
 
             #read text from cropped frame
             tRankedMatch = self.fr.read_text(
@@ -584,6 +598,9 @@ class Tekken8RankTracker:
             else:
                 #increment video playback time
                 self.yt.skip_forward(self.setup_interval)
+
+            #exit iteration
+            return
         
         if self.state == self.STATE_PREGAME:
             #check if vod is over
@@ -596,8 +613,6 @@ class Tekken8RankTracker:
                 self.state = self.STATE_AFTER
                 return
 
-            #capture new frame
-            self.frame = self.yt.get_frame(self.state, self.imglog_flag)
 
             if self.tekken_end == 0 and self.tekken_start == 0:
                 #check if fps counter is present
@@ -664,6 +679,9 @@ class Tekken8RankTracker:
                 #increment video playback time
                 self.yt.skip_forward(self.pregame_interval)
 
+            #exit iteration
+            return
+        
         if self.state == self.STATE_LOBBY:
             tSTAGE = self.fr.read_text(
                 frame_in=self.frame, 
@@ -679,6 +697,7 @@ class Tekken8RankTracker:
             if not "STAGE" in tSTAGE.upper():
                 opponent_fighter = None
 
+                #change state
                 self.state = self.EXIT_LOBBY
                 return
 
@@ -698,14 +717,15 @@ class Tekken8RankTracker:
                 for fighter in self.fr.fighter_list:
                     for string in fighter_temp:
                         if fighter in string:
-                            opponent_fighter = fighter
+                            self.opponent_fighter = fighter
 
                             #change state
                             self.state = self.EXIT_LOBBY
 
-                            break
+                            #exit iteration
+                            return
                     else:
-                        opponent_fighter = None
+                        self.opponent_fighter = None
                         continue
                     break
                 else:
@@ -744,7 +764,11 @@ class Tekken8RankTracker:
                 #capture new frame
                 self.frame = self.yt.get_frame(self.state, self.imglog_flag)
 
+            #exit iteration
+            return
+        
         if self.state == self.EXIT_LOBBY:
+            opponent_fighter = self.opponent_fighter
             #add non-alphanumerics back to name if applicable
             if opponent_fighter == "JACK":
                 opponent_fighter = "JACK-8"
@@ -833,6 +857,9 @@ class Tekken8RankTracker:
             #change state
             self.state = self.STATE_PREGAMEWAIT
 
+            #exit iteration
+            return
+
         if self.state == self.ENTRY_INGAME:
             #prepare variables
             self.dynamic_interval = self.ingame_interval
@@ -841,6 +868,9 @@ class Tekken8RankTracker:
 
             #change state
             self.state = self.STATE_INGAME
+
+            #exit iteration
+            return
 
         if self.state == self.STATE_INGAME:
             #check if vod is over
@@ -870,9 +900,6 @@ class Tekken8RankTracker:
                 self.yt.log_EVENT("VOD Finished", True)
                 self.state = self.STATE_AFTER
                 return
-
-            #capture new frame
-            self.frame = self.yt.get_frame(self.state, self.imglog_flag)
 
             tOK = self.fr.read_text(
                 frame_in=self.frame, 
@@ -1033,6 +1060,9 @@ class Tekken8RankTracker:
                         #rewind playback to last interval
                         self.yt.skip_forward(-(self.dynamic_interval-1))
 
+            #exit iteration
+            return
+        
         if self.state == self.STATE_POSTGAMERESULT:
             #check if vod is over
             if self.yt.playback_time >= self.yt.video_length:
@@ -1045,9 +1075,6 @@ class Tekken8RankTracker:
                 self.yt.log_EVENT("VOD finished", True)
                 self.state = self.STATE_AFTER
                 return
-            
-            #capture new frame
-            self.frame = self.yt.get_frame(self.state, self.imglog_flag)
 
             tKAZUYA = self.fr.read_fighter(
                 frame_in=self.frame, 
@@ -1184,6 +1211,9 @@ class Tekken8RankTracker:
                 
             self.state = self.STATE_POSTGAMEINTENT
         
+            #exit iteration
+            return
+        
         if self.state == self.STATE_POSTGAMEINTENT:
             if self.yt.playback_time >= self.yt.video_length:
                 self.yt.playback_time == self.yt.video_length
@@ -1200,9 +1230,6 @@ class Tekken8RankTracker:
             if self.yt.get_time() < self.playback:
                 #advance playback past whatever noise caused it to happen
                 self.yt.skip_forward(10)
-            
-            #capture new frame
-            self.frame = self.yt.get_frame(self.state, self.imglog_flag)
 
             #check if still in postgame window
             player_dots, opponent_dots, outcome = self.fr.count_match_dots(self.frame)
@@ -1328,8 +1355,11 @@ class Tekken8RankTracker:
                     #rewind playback by dynamic interval
                     self.yt.skip_forward(self.dynamic_interval)
 
+            #exit iteration
+            return
+
         if self.state == self.STATE_AFTER:
-            #break out of fsm loop
+            #exit iteration
             return
 
         if self.state == self.STATE_PREGAMEWAIT:
@@ -1341,9 +1371,6 @@ class Tekken8RankTracker:
                 self.yt.log_EVENT("VOD finished", True)
                 self.state = self.STATE_AFTER
                 return
-            
-            #capture new frame
-            self.frame = self.yt.get_frame(self.state, self.imglog_flag)
 
             #check if left prematch lobby
             tSTAGE = self.fr.read_text(
@@ -1417,6 +1444,9 @@ class Tekken8RankTracker:
                 #change state
                 self.state = self.STATE_BEFORE
 
+            #exit iteration
+            return
+
         if self.state == self.STATE_INGAMEUNSURE:
             #check if vod is over
             if self.yt.playback_time >= self.yt.video_length:
@@ -1426,12 +1456,9 @@ class Tekken8RankTracker:
                 self.yt.log_EVENT("VOD finished", True)
                 self.state = self.STATE_AFTER
                 return
-            
-            #capture new frame
-            self.frame = self.yt.get_frame(self.state, self.imglog_flag)
 
             #check for ranked match (indicating left lobby) in case of rage quit
-            for r in range(self.igcheck):
+            for _ in range(self.igcheck):
                 frame_check = self.yt.get_frame(self.state, self.imglog_flag)
                 tRankedMatch = self.fr.read_text(
                     frame_in=frame_check,
@@ -1467,6 +1494,9 @@ class Tekken8RankTracker:
                 #change state
                 self.state = self.ENTRY_INGAME
 
+            #exit iteration
+            return
+        
 #demo
 if __name__ == "__main__":
     #initialize object
@@ -1480,11 +1510,14 @@ if __name__ == "__main__":
         #optional: when (in seconds)to stop recording (must be after leaving a lobby)
         # end_time=15420, 
 
+        #optional: video date (if not the same as the upload date)
+        vod_date=20240223,
+
         #optional: set frame_log to True if you want to debug
         frame_log=True,
 
         #optional: set fsm initial state if 'Ranked Match' indicator does not appear
-        # initial_state=Tekken8RankTracker.STATE_PREGAME
+        # initial_state=Tekken8«RankTracker.STATE_PREGAME
     )
     
     #start scraping
