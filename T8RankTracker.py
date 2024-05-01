@@ -912,6 +912,7 @@ class Tekken8RankTracker:
                     message="Leaving Lobby.",
                     note="Player is watching a replay"
                 )
+                self.yt.end_lobby()
 
                 #increment playback time
                 self.yt.skip_forward(self.min_pregame_length)
@@ -1064,6 +1065,7 @@ class Tekken8RankTracker:
                     message="Leaving Lobby.",
                     note="Match ended without an outcome"
                 )
+                self.yt.end_lobby()
 
                 #indicates opponent disconnected, save incomplete match
                 self.yt.match_result(None, self.yt.RATING_UNKNOWN)
@@ -1161,11 +1163,11 @@ class Tekken8RankTracker:
                     else:
                         outcome = self.yt.OUTCOME_LOSS
 
-                    self.yt.end_lobby()
                     self.yt.log_EVENT(
                         message="Leaving lobby",
                         note=f"with {self.yt.opponent_name}"
                     )
+                    self.yt.end_lobby()
 
                     #advance video playback by minimum pre-game length
                     self.yt.skip_forward(self.min_pregame_length)
@@ -1213,10 +1215,10 @@ class Tekken8RankTracker:
                 self.dynamic_interval /= 2
                 #prevent dynamic interval from getting too small and getting stuck
                 if self.dynamic_interval < 0.05:
-                    self.yt.end_lobby()
                     self.yt.log_EVENT(
                         message="Leaving lobby",
                         note=f"with {self.yt.opponent_name}")
+                    self.yt.end_lobby()
 
                     #advance video playback by minimum pre game length
                     self.yt.skip_forward(self.min_pregame_length)
@@ -1301,10 +1303,10 @@ class Tekken8RankTracker:
                     "CANCEL" in opponent_intent.upper(),
                     "CANCEL" in opponent_intent_inv.upper()
                 )):
-                    self.yt.end_lobby()
                     self.yt.log_EVENT(
                         message="Leaving lobby",
                         note=f"with {self.yt.opponent_name}")
+                    self.yt.end_lobby()
 
                     #advance video playback by minimum pre game length
                     self.yt.skip_forward(self.min_pregame_length)
@@ -1375,6 +1377,7 @@ class Tekken8RankTracker:
                         message="Leaving Lobby.",
                         note="Connection error"
                     )
+                    self.yt.end_lobby()
 
                     #advance playback by minimum pregame length
                     self.yt.skip_forward(self.min_pregame_length)
@@ -1391,21 +1394,22 @@ class Tekken8RankTracker:
 
             #check if in a replay
             tAttackStartupFrames = self.fr.read_text(
-                    frame_in=self.frame, 
-                    xa=940, 
-                    xb=1059, 
-                    ya=582, 
-                    yb=595, 
-                    threshold=100,
-                    save_flag=self.imglog_flag,
-                    time_id=self.yt.get_time(),
-                    description="_tAttackStartupFrames"
+                frame_in=self.frame, 
+                xa=940, 
+                xb=1059, 
+                ya=582, 
+                yb=595, 
+                threshold=100,
+                save_flag=self.imglog_flag,
+                time_id=self.yt.get_time(),
+                description="_tAttackStartupFrames"
             )
             if is_match("AttackStartupFrames", tAttackStartupFrames):
                 self.yt.log_EVENT(
                     message="Leaving Lobby.",
                     note="Player is watching a replay"
                 )
+                self.yt.end_lobby()
 
                 #increment playback time
                 self.yt.skip_forward(self.min_pregame_length)
@@ -1444,7 +1448,9 @@ class Tekken8RankTracker:
                     #if ranked match, go to pregame
                     self.yt.log_EVENT(
                         message="Connection error.",
-                        note=f"Leaving lobby with {self.yt.opponent_name}")
+                        note=f"Leaving lobby with {self.yt.opponent_name}"
+                    )
+                    self.yt.end_lobby()
 
                     #change state
                     self.state = self.STATE_PREGAME
