@@ -453,7 +453,7 @@ class YoutubeCapture:
 
 class Tekken8RankTracker:
     #API
-    class info:
+    class api:
         def __init__(self, initial_state, start_time):
             self.state = initial_state
             self.playback_time = start_time
@@ -508,9 +508,9 @@ class Tekken8RankTracker:
         self.fr = FrameRecognition()
 
         #setup api
-        self.info = self.info(initial_state, start_time)
+        self.info = self.api(initial_state, start_time)
 
-        #setup run variables
+        #setup l
         self.log_flag = True
         self.imglog_flag = frame_log
 
@@ -745,7 +745,6 @@ class Tekken8RankTracker:
                 self.frame = self.yt.get_frame(self.state, self.imglog_flag)
 
         if self.state == self.EXIT_LOBBY:
-
             #add non-alphanumerics back to name if applicable
             if opponent_fighter == "JACK":
                 opponent_fighter = "JACK-8"
@@ -822,7 +821,7 @@ class Tekken8RankTracker:
                 description="_opprank"
             )
 
-            self.yt.new_lobby(player_fighter, player_rank, opponent_name,opponent_fighter,opponent_rank)
+            self.yt.new_lobby(player_fighter, player_rank, opponent_name, opponent_fighter, opponent_rank)
             self.yt.log_EVENT(
                 message="Starting Match:",
                 note=f"Player ({player_fighter} - {player_rank}) vs. {opponent_name} ({opponent_fighter} - {opponent_rank})"
@@ -1165,14 +1164,8 @@ class Tekken8RankTracker:
                     self.yt.end_lobby()
                     self.yt.log_EVENT(
                         message="Leaving lobby",
-                        note=f"with {opponent_name}"
+                        note=f"with {self.yt.opponent_name}"
                     )
-
-                    #clear opponent variables
-
-                    opponent_fighter = None
-                    opponent_name = None
-                    opponent_rank = None
 
                     #advance video playback by minimum pre-game length
                     self.yt.skip_forward(self.min_pregame_length)
@@ -1223,7 +1216,7 @@ class Tekken8RankTracker:
                     self.yt.end_lobby()
                     self.yt.log_EVENT(
                         message="Leaving lobby",
-                        note=f"with {opponent_name}")
+                        note=f"with {self.yt.opponent_name}")
 
                     #advance video playback by minimum pre game length
                     self.yt.skip_forward(self.min_pregame_length)
@@ -1242,16 +1235,10 @@ class Tekken8RankTracker:
 
                 self.yt.log_EVENT(
                     message="Leaving lobby",
-                    note=f"with {opponent_name}"
+                    note=f"with {self.yt.opponent_name}"
                 )
 
                 self.yt.end_lobby()
-
-                #clear opponent variables
-
-                opponent_fighter = None
-                opponent_name = None
-                opponent_rank = None
 
                 #advance video playback by minimum pre-game length
                 self.yt.skip_forward(self.min_pregame_length)
@@ -1317,7 +1304,7 @@ class Tekken8RankTracker:
                     self.yt.end_lobby()
                     self.yt.log_EVENT(
                         message="Leaving lobby",
-                        note=f"with {opponent_name}")
+                        note=f"with {self.yt.opponent_name}")
 
                     #advance video playback by minimum pre game length
                     self.yt.skip_forward(self.min_pregame_length)
@@ -1457,7 +1444,7 @@ class Tekken8RankTracker:
                     #if ranked match, go to pregame
                     self.yt.log_EVENT(
                         message="Connection error.",
-                        note=f"Leaving lobby with {opponent_name}")
+                        note=f"Leaving lobby with {self.yt.opponent_name}")
 
                     #change state
                     self.state = self.STATE_PREGAME
@@ -1472,7 +1459,7 @@ class Tekken8RankTracker:
                 self.yt.skip_forward(self.min_match_length - self.igcheck * self.pregame_interval)
                 
                 #change state
-                self.state = self.ENTRY_INGAME  
+                self.state = self.ENTRY_INGAME
 
 #demo
 if __name__ == "__main__":
