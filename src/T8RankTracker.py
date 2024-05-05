@@ -371,12 +371,12 @@ class YoutubeCapture:
         mkdir_img()
 
     def log_EVENT(self, message="", italic=False ,note=""):
-        out = f"{asciiColor.bg.CYAN}EVENT@{self.get_time()}{asciiColor.reset} "
+        out = f"{asciiColor.bg.CYAN}{asciiColor.fg.WHITE}EVENT@{self.get_time()}{asciiColor.reset} "
         if message:
             if italic:
-                out += f"{asciiColor.style.italic}{message}{asciiColor.reset}"
+                out += f"{asciiColor.style.italic}{asciiColor.fg.WHITE}{message}{asciiColor.reset}"
             else:
-                out += f"{asciiColor.style.bold}{message}{asciiColor.reset}"
+                out += f"{asciiColor.style.bold}{asciiColor.fg.WHITE}{message}{asciiColor.reset}"
 
         if note:
             out += f" {note}"
@@ -384,7 +384,7 @@ class YoutubeCapture:
         print(out)
 
     def log_DEBUG(self, message):
-        print(f"{asciiColor.bg.YELLOW}DEBUG@{self.get_time()}{asciiColor.reset} {message}")
+        print(f"{asciiColor.bg.BLUE}{asciiColor.fg.WHITE}DEBUG@{self.get_time()}{asciiColor.reset} {message}")
     
     def get_frame(self, type, save_flag):
         ret, frame = self.cap.read()
@@ -399,7 +399,8 @@ class YoutubeCapture:
         self.cap.set(cv2.CAP_PROP_POS_MSEC, sec_to_ms(self.playback_time)) # advance by interval
 
     def get_time(self):
-        return round(self.playback_time,3)
+        time = round(self.playback_time,3)
+        return time
     
     def get_url(self):
         return f"https://youtu.be/{self.video_id}?t={int(self.playback_time)}s"
@@ -454,20 +455,34 @@ class YoutubeCapture:
 class Tekken8RankTracker:
     #API
     class api:
-        def __init__(self, initial_state, start_time):
-            self.state = initial_state
-            self.playback_time = start_time
-            self.frame = None
 
-        def update(self, state, playback_time, frame):
-            self.state = state
-            self.playback_time = playback_time
-            self.frame = frame
+        def __init__(self, initial_state, start_time):
+            self.package = {
+                'playback_time': start_time,
+                'game_state': initial_state,
+                'frame': None
+            }
+
+        def update(self, playback_time, game_state, frame):
+            self.package = {
+                'playback_time': playback_time,
+                'game_state': game_state,
+                'frame': frame
+            }
 
         def is_fsm_active(self) -> 'bool':
-            if self.state != Tekken8RankTracker.STATE_AFTER:
+            if self.package['game_state'] != Tekken8RankTracker.STATE_AFTER:
                 return True
             return False
+        
+        def get_time(self):
+            return self.package['playback_time']
+        
+        def get_state(self):
+            return self.package['game_state']
+
+        def get_preview(self):
+            return self.package['frame']
 
     #game states
     STATE_BEFORE = "beforeState"
@@ -560,7 +575,11 @@ class Tekken8RankTracker:
             self.frame = self.yt.get_frame(self.state, self.imglog_flag)
 
         #update API
-        self.info.update(self.state, self.yt.playback_time, self.frame)
+        self.info.update(
+            playback_time = self.yt.playback_time,
+            game_state = self.state,
+            frame = self.frame
+            )
 
         #---FSM---
         if self.state == self.STATE_BEFORE:
@@ -1508,7 +1527,7 @@ if __name__ == "__main__":
         start_time=17541,
 
         #optional: when (in seconds)to stop recording (must be after leaving a lobby)
-        # end_time=15420, 
+        end_time=17600, 
 
         #optional: video date (if not the same as the upload date)
         vod_date=20240223,

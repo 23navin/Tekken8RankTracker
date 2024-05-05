@@ -1,0 +1,121 @@
+body {
+    font-family: Arial;
+}
+
+div {
+    margin: auto;
+
+    text-align: center;
+    vertical-align: middle;
+}
+
+button {
+    vertical-align: middle;
+}
+
+img {
+    width: 98%;
+    padding: 1%;
+}
+
+/* 1st row */
+.status {
+    display: flex;
+    font-size: 2rem;
+}
+
+.status > div {
+    padding-left: 1vw;
+    padding-right: 1vw;
+}
+
+.title {
+    font-weight: bold;
+    text-align: left;
+    flex-grow: 7;
+}
+
+.ptime {
+    flex-grow: 2;
+}
+
+.state {
+    flex-grow: 2;
+}
+/* 2nd row */
+.bar {
+    display: flex;
+    font-size: 1rem;
+
+    border: 2px solid black;
+}
+
+.inputs {
+    flex-grow: 9;
+    display: flex;
+}
+
+.controls {
+    flex-grow: 1;
+    display: flex;
+}
+
+.inputs > div {
+    border: 1px solid black;
+}
+
+.controls > div {
+    border: 1px solid black;
+}
+
+.link_input {
+    flex-grow: 5;
+}
+
+.link_input > input {
+    width: 40ch;
+}
+
+.date_input {
+    flex-grow: 2;
+}
+
+.date_input > input {
+    width: 10ch;
+}
+
+.start_input {
+    flex-grow: 2;
+}
+
+.start_input > input {
+    width: 6ch;
+}
+
+.end_input {
+    flex-grow: 2;
+}
+
+.end_input > input {
+    width: 6ch;
+}
+
+.init_state {
+    flex-grow: 1;
+}
+
+.log_input {
+    flex-grow: 1;
+}
+
+.set {
+    flex-grow: 1;
+}
+
+.start {
+    flex-grow: 1;
+}
+
+.stop {
+    flex-grow: 1;
+}

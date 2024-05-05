@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en-US">
+    <head>
+        <meta charset="UTF-8">
+        <title>Tekken8 Rank Tracker</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+        <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+        <script src=" {{ url_for('static', filename='js/script.js') }}"></script>
+        
+    </head>
+    <body>
+        <div class="status">
+            <div class="title">Tekken8 Rank Tracker</div>
+            <div class="ptime" id="time_display">Playback Time</div>
+            <div class="state" id="state_display">Game State</div>
+        </div>
+
+        <div class="bar">
+            <form method="POST" class="inputs">
+                <div class="link_input">
+                    <label for="video_link">Link</label>
+                    <input type="text" name="video_link" placeholder="https://www.youtube.com/watch?v=xxxxxxxxxx" value="{{ video_link }}">
+                </div>
+                <div class="date_input">
+                    <label for="video_date">Date</label>
+                    <input type="text" name="video_date" placeholder="YYYYMMDD" value="{{ video_date }}">
+                </div>
+                <div class="start_input">
+                    <label for="start_time">Start Time</label>
+                    <input type="text" name="start_time" placeholder="0" value="{{ start_input }}">
+                </div>
+                <div class="end_input">
+                    <label for="end_time">End Time</label>
+                    <input type="text" name="end_time" placeholder="-1" value="{{ end_input }}">
+                </div>
+                <div class="init_state">
+                    <label for="init_state">Bad Start</label>
+                    <input type="checkbox" name="init_state" {{ 'checked="checked"' if init_state}}>
+                </div>
+                <div class="log_input">
+                    <label for="log_input">Frame Log</label>
+                    <input type="checkbox" name="log_input" {{ 'checked="checked"' if log_input}}>
+                </div>
+                <div class="set">
+                    <input type="submit" name="submit" value="SET">
+                </div>
+            </form>
+            <div class="controls">
+                <div class="start">
+                    <button id="start-button">START</button>
+                </div>
+                <div class="stop">
+                    <button id="stop-button">STOP</button>
+                </div>
+            </div>
+        </div>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+
+
+        <div class="preview">
+            <img id= 'video-preview' class='img-preview' src=" {{ url_for('static', filename='img/preview.png') }}" alt="Preview" draggable="false">
+        </div>
+    </body>
+</html>
