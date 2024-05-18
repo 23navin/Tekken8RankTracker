@@ -62,15 +62,22 @@ $(function() {
 
 function update(status_url) {
     $.getJSON(status_url, function(data) {
+        // state logic prep
         vPROCESSING = data['state'] == "PROCESSING"
         xSUCCESS = data['state'] != "SUCCESS"
         xFAILURE = data['state'] != "FAILURE"
         xREVOKED = data['state'] != "REVOKED"
 
-
+        // telemetry
         document.getElementById('time_display').textContent=data['playback_time'];
         document.getElementById('state_display').textContent=data['game_state'];
 
+        // preview
+        if (vPROCESSING) {
+            
+        }
+
+        // start/pause button text
         if (vPROCESSING) {
             document.getElementById('start-button').textContent="PAUSE";
         }
@@ -78,6 +85,7 @@ function update(status_url) {
             document.getElementById('start-button').textContent="START";
         }
 
+        // call next update
         if (xSUCCESS && xFAILURE && xREVOKED) {
             setTimeout(function() {
                 update(status_url);
