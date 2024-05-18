@@ -33,12 +33,13 @@ redis = Redis()
 def mtask(self, video_link, video_date, start_time, end_time, frame_log, initial_state):
     #response package
     dpackage = {
-        'playback_time' : 'starting',
-        'game_state' : 'starting',
-        'frame' : None
+        'playback_time' : 'initialzing',
+        'game_state' : 'initializing',
+        'preview' : None
     }
     #update redis
     self.update_state(state='PROCESSING', meta=dpackage)
+    redis.set("current_task", self.request.id)
 
     #initialize task
     tracker = Tekken8RankTracker(
@@ -50,16 +51,17 @@ def mtask(self, video_link, video_date, start_time, end_time, frame_log, initial
         initial_state=initial_state
     )
 
-
     #loop
     while tracker.info.is_fsm_active():
         #pause/play celery task
         task = celery.AsyncResult(self.request.id)
         while task.state == 'PAUSING' or task.state == 'PAUSED':
             if task.state == 'PAUSING':
+                print("pausing...")
                 self.update_state(state='PAUSED', meta=dpackage)
             sleep(1)
         if task.state == 'RESUME':
+            print("resuming...")
             self.update_state(state='PROCESSING', meta=dpackage)
 
         #run tracker
@@ -68,7 +70,7 @@ def mtask(self, video_link, video_date, start_time, end_time, frame_log, initial
         #update response package
         dpackage['playback_time'] = tracker.info.get_time()
         dpackage['game_state'] = tracker.info.get_state()
-        # dpackage['frame'] = tracker.info.get_preview()
+        dpackage['preview'] = tracker.info.get_preview()
 
         #update redis
         self.update_state(state='PROCESSING', meta=dpackage)
@@ -174,21 +176,26 @@ def tracker_status(task_id):
             'state' : task.state,
             'playback_time' : task.info.get('playback_time', '--'),
             'game_state' : task.info.get('game_state', '--'),
-            'counter' : 'Game State'
         }
     elif task.state == 'FAILURE' or task.state == 'REVOKED':
         response = {
             'state' : task.state,
-            'playback_time' : task.info.get('playback_time', '--'),
-            'game_state' : task.info.get('game_state', '--'),
-            'counter' : '--'
+            'playback_time' : "revoked",
+            'game_state' : "revoked",
+        }
+    elif task.state == 'PENDING' or task.state == 'STARTED':
+        response = {
+            'state' : task.state,
+            'playback_time' : 'celeryPending',
+            'game_state' : 'celeryPending',
+            # 'preview' : task.info.get('preview')
         }
     else:
         response = {
             'state' : task.state,
             'playback_time' : task.info.get('playback_time', '--'),
             'game_state' : task.info.get('game_state', '--'),
-            'counter' : task.info.get('counter', 0)
+            # 'preview' : task.info.get('preview')
         }
 
     return jsonify(response)

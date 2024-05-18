@@ -455,7 +455,6 @@ class YoutubeCapture:
 class Tekken8RankTracker:
     #API
     class api:
-
         def __init__(self, initial_state, start_time):
             self.package = {
                 'playback_time': start_time,
@@ -482,7 +481,8 @@ class Tekken8RankTracker:
             return self.package['game_state']
 
         def get_preview(self):
-            return self.package['frame']
+            buffer = cv2.imencode('.png', self.package['frame'])[1]
+            return buffer
 
     #game states
     STATE_BEFORE = "beforeState"
@@ -631,7 +631,6 @@ class Tekken8RankTracker:
                 #change state
                 self.state = self.STATE_AFTER
                 return
-
 
             if self.tekken_end == 0 and self.tekken_start == 0:
                 #check if fps counter is present
