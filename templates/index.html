@@ -57,8 +57,9 @@
         <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
 
 
-        <div class="preview">
-            <img id= 'video-preview' class='img-preview' src=" {{ url_for('static', filename='img/preview.png') }}" alt="Preview" draggable="false">
+        <div class="preview_container">
+            <img src=" {{ url_for('static', filename='img/preview.png') }}" alt="Preview" draggable="false">
+            <canvas id="previewCanvas" width="1280px" height="720px"></canvas>
         </div>
     </body>
 </html>

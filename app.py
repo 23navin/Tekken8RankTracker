@@ -1,5 +1,5 @@
 #web framework
-from flask import Flask, render_template, jsonify, url_for, request, session, redirect
+from flask import Flask, render_template, jsonify, url_for, request, session, redirect, Response
 
 #queue api
 from celery import Celery
@@ -33,7 +33,7 @@ redis = Redis()
 def mtask(self, video_link, video_date, start_time, end_time, frame_log, initial_state):
     #response package
     dpackage = {
-        'playback_time' : 'initialzing',
+        'playback_time' : 'initializing',
         'game_state' : 'initializing',
         'preview' : None
     }
@@ -70,7 +70,12 @@ def mtask(self, video_link, video_date, start_time, end_time, frame_log, initial
         #update response package
         dpackage['playback_time'] = tracker.info.get_time()
         dpackage['game_state'] = tracker.info.get_state()
-        dpackage['preview'] = tracker.info.get_preview()
+
+        imag = tracker.info.get_preview()
+        # print(imag)
+        
+        preview_buffer = b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + imag + b'\r\n'
+        dpackage['preview'] = preview_buffer
 
         #update redis
         self.update_state(state='PROCESSING', meta=dpackage)
@@ -114,7 +119,13 @@ def get_ids():
     response = {'task_count': len(cinfo)}
 
     if len(cinfo):
-        return jsonify(response), 200, {'Location': url_for('tracker_status', task_id=cinfo[0].get('id'))}
+        task_id = cinfo[0].get('id')
+        HTTPresponse = {
+            'taskID': task_id
+            # 'Tstatus': url_for('tracker_status', task_id=task_id),
+            # 'Tpreview': url_for('tracker_preview', task_id=task_id)
+        }
+        return jsonify(response), 200, HTTPresponse
     else:
         return jsonify(response), 200
 
@@ -137,7 +148,14 @@ def run_tracker():
         frame_log = False
 
     task = mtask.apply_async(args=[video_link, video_date, start_time, end_time, frame_log, initial_state])
-    return jsonify({}), 202, {'Location': url_for('tracker_status', task_id=task.id)}
+
+    HTTPresponse = {
+        'taskID': task.id
+        # 'Tstatus': url_for('tracker_status', task_id=task.id),
+        # 'Tpreview': url_for('tracker_preview', task_id=task.id)
+    }
+
+    return jsonify({}), 202, HTTPresponse
 
 
 @app.route('/playpause', methods=['POST'])
@@ -174,8 +192,8 @@ def tracker_status(task_id):
     if task.state == 'SUCCESS':
         response = {
             'state' : task.state,
-            'playback_time' : task.info.get('playback_time', '--'),
-            'game_state' : task.info.get('game_state', '--'),
+            'playback_time' : 'celerySuccess',
+            'game_state' : 'celerySuccess',
         }
     elif task.state == 'FAILURE' or task.state == 'REVOKED':
         response = {
@@ -188,17 +206,23 @@ def tracker_status(task_id):
             'state' : task.state,
             'playback_time' : 'celeryPending',
             'game_state' : 'celeryPending',
-            # 'preview' : task.info.get('preview')
         }
     else:
         response = {
             'state' : task.state,
             'playback_time' : task.info.get('playback_time', '--'),
             'game_state' : task.info.get('game_state', '--'),
-            # 'preview' : task.info.get('preview')
         }
 
     return jsonify(response)
+
+@app.route('/preview/<task_id>/<playback_time>')
+def tracker_preview(task_id, playback_time):
+    task = mtask.AsyncResult(task_id)
+    image = task.info.get('preview')
+
+    return Response(image, mimetype='multipart/x-mixed-replace; boundary=frame')
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port="23232", debug=True)

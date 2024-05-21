@@ -2,6 +2,14 @@
 
 A Python script that uses OpenCV and PyTesseract to track a player's Tekken 8 rank progression from a youtube vod.
 
+## Set Up
+
+Start Redis on port 6379
+
+Start Celery (within venv) `celery -A app.celery worker --loglevel=info`
+
+Start Flower (within venv) `celery -A app.celery flower --broker:amqp://localhost//`
+
 ## Status
 
 This is a personal project and my first time using python. It is not complete and will probably go through many revisions as I learn the language and get better at image/text detection.

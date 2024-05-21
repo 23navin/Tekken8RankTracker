@@ -13,9 +13,30 @@ button {
     vertical-align: middle;
 }
 
-img {
-    width: 98%;
+.preview_container {
     padding: 1%;
+}
+
+.preview_container > img {
+    position:absolute;
+    z-index: -5;
+    width: 95%;
+    margin-left: auto;
+    margin-right: auto;
+    left: 0;
+    right: 0;
+
+    box-shadow: 0 11px 35px 2px rgba(0, 0, 0, 0.56); 
+}
+
+.preview_container > canvas {
+    position: absolute;
+    z-index: 20;
+    width: 95%;
+    margin-left: auto;
+    margin-right: auto;
+    left: 0;
+    right: 0;
 }
 
 /* 1st row */

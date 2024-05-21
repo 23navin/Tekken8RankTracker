@@ -14,6 +14,7 @@ import cv2
 import pytesseract
 import re
 from difflib import SequenceMatcher
+import base64
 
 # data logging
 import csv
@@ -481,7 +482,7 @@ class Tekken8RankTracker:
             return self.package['game_state']
 
         def get_preview(self):
-            buffer = cv2.imencode('.png', self.package['frame'])[1]
+            buffer = cv2.imencode('.jpg', self.package['frame'])[1].tostring()
             return buffer
 
     #game states
@@ -576,7 +577,7 @@ class Tekken8RankTracker:
 
         #update API
         self.info.update(
-            playback_time = self.yt.playback_time,
+            playback_time = self.yt.get_time(),
             game_state = self.state,
             frame = self.frame
             )
@@ -1541,3 +1542,4 @@ if __name__ == "__main__":
     #start scraping
     while tracker.info.is_fsm_active():
         tracker.run_fsm()
+        print(tracker.info.get_preview())
