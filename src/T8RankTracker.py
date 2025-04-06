@@ -1536,7 +1536,7 @@ if __name__ == "__main__":
         frame_log=True,
 
         #optional: set fsm initial state if 'Ranked Match' indicator does not appear
-        # initial_state=Tekken8«RankTracker.STATE_PREGAME
+        # initial_state=Tekken8RankTracker.STATE_PREGAME
     )
     
     #start scraping
