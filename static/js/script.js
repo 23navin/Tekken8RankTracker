@@ -63,6 +63,9 @@ $(function() {
     $('#stop-button').click(stop);
 });
 
+var preview_created = false;
+var img = new Image();
+
 function update(task_id) {
     $.getJSON('/status/'+task_id, function(data) {
         // state logic prep
@@ -72,22 +75,29 @@ function update(task_id) {
         xFAILURE = data['state'] != "FAILURE"
         xREVOKED = data['state'] != "REVOKED"
 
+        gstate = data['game_state']
+
         // telemetry
         document.getElementById('time_display').textContent=data['playback_time'];
         document.getElementById('state_display').textContent=data['game_state'];
 
         // preview
         if (vPROCESSING) {
-            var canvas = document.getElementById("previewCanvas")
-            canvas.width = 1280;
-            var ctx = canvas.getContext('2d');
+            if (!preview_created) {
+                var canvas = document.getElementById("previewCanvas")
+                canvas.width = 1280;
+                var ctx = canvas.getContext('2d');
+                
+                img.src = '/preview/'+task_id+'/'+data['playback_time'];
+                
+                img.onload = function() {
+                    ctx.drawImage(img, 0, 0, 1280, 720)
+                };
 
-            var img = new Image();
+                preview_created = true;
+            }
+
             img.src = '/preview/'+task_id+'/'+data['playback_time'];
-            
-            img.onload = function() {
-                ctx.drawImage(img, 0, 0, 1280, 720)
-            };
         }
 
         // start/pause button text
