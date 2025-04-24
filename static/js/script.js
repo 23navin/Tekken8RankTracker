@@ -141,3 +141,31 @@ window.onload = function() {
         }
     });
 };
+
+$(function() {
+    $('.inputs input').on('change', function() {
+        console.log("Input changed!");  // Debug message
+
+        let formData = {
+            video_link: $('input[name="video_link"]').val(),
+            video_date: $('input[name="video_date"]').val(),
+            start_time: $('input[name="start_time"]').val(),
+            end_time: $('input[name="end_time"]').val(),
+            init_state: $('input[name="init_state"]').is(':checked'),
+            log_input: $('input[name="log_input"]').is(':checked')
+        };
+
+        $.ajax({
+            type: 'POST',
+            url: '/set',
+            contentType: 'application/json',
+            data: JSON.stringify(formData),
+            success: function(response) {
+                console.log("Inputs auto-saved.");
+            },
+            error: function() {
+                console.error("Failed to auto-save inputs.");
+            }
+        });
+    });
+});

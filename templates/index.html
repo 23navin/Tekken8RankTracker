@@ -16,7 +16,7 @@
         </div>
 
         <div class="bar">
-            <form method="POST" class="inputs">
+            <form method="POST" class="inputs" onsubmit="return false;">
                 <div class="link_input">
                     <label for="video_link">Link</label>
                     <input type="text" name="video_link" placeholder="https://www.youtube.com/watch?v=xxxxxxxxxx" value="{{ video_link }}">
@@ -40,9 +40,6 @@
                 <div class="log_input">
                     <label for="log_input">Frame Log</label>
                     <input type="checkbox" name="log_input" {{ 'checked="checked"' if log_input}}>
-                </div>
-                <div class="set">
-                    <input type="submit" name="submit" value="SET">
                 </div>
             </form>
             <div class="controls">

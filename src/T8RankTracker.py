@@ -14,7 +14,6 @@ import cv2
 import pytesseract
 import re
 from difflib import SequenceMatcher
-import base64
 
 # data logging
 import csv

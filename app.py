@@ -27,6 +27,11 @@ celery.conf.update(app.config)
 #setup Redis object
 redis = Redis()
 
+#logging
+def message(message:str):
+    print(f"[ACTION] {message}")
+
+
 #main task
 @celery.task(bind=True)
 def mtask(self, video_link, video_date, start_time, end_time, frame_log, initial_state):
@@ -57,11 +62,11 @@ def mtask(self, video_link, video_date, start_time, end_time, frame_log, initial
         task = celery.AsyncResult(self.request.id)
         while task.state == 'PAUSING' or task.state == 'PAUSED':
             if task.state == 'PAUSING':
-                print("pausing...")
+                message("pausing...")
                 self.update_state(state='PAUSED', meta=dpackage)
             sleep(1)
         if task.state == 'RESUME':
-            print("resuming...")
+            message("resuming...")
             self.update_state(state='PROCESSING', meta=dpackage)
 
         #run tracker
@@ -93,25 +98,28 @@ def index():
             log_input=session.get('frame_log',"on")
         )
     
-    video_link = request.form['video_link']
-    session['video_link'] = video_link
-
-    video_date = request.form['video_date']
-    session['video_date'] = video_date
-
-    start_time = request.form['start_time']
-    session['start_time'] = start_time
-
-    end_time = request.form['end_time']
-    session['end_time'] = end_time
-
-    initial_state = request.form.get('init_state')
-    session['initial_state'] = initial_state
-
-    frame_log = request.form.get('log_input')
-    session['frame_log'] = frame_log
-    
     return redirect(url_for('index'))
+
+@app.route('/set', methods=['POST'])
+def set_inputs():
+    data = request.get_json()
+    
+    session['video_link'] = data['video_link']
+    session['video_date'] = data['video_date']
+    session['start_time'] = data['start_time']
+    session['end_time'] = data['end_time']
+    session['initial_state'] = data['init_state']
+    session['frame_log'] = data['log_input']
+    
+    message("autosaved inputs")
+    message(f"video_link: {session['video_link']}")
+    message(f"video_date: {session['video_date']}")
+    message(f"start_time: {session['start_time']}")
+    message(f"end_time: {session['end_time']}")
+    message(f"initial_state: {session['initial_state']}")
+    message(f"frame_log: {session['frame_log']}")
+    
+    return '', 204
 
 @app.route('/init', methods=['POST'])
 def get_ids():
@@ -160,6 +168,8 @@ def run_tracker():
 
     task = mtask.apply_async(args=[video_link, video_date, start_time, end_time, frame_log, initial_state])
 
+    message(f"Task {task.id} started")
+    
     HTTPresponse = {
         'taskID': task.id
         # 'Tstatus': url_for('tracker_status', task_id=task.id),
@@ -193,6 +203,8 @@ def stop_tracker():
     task_id = celery.control.inspect().active().popitem()[1][0].get('id')
     task = celery.AsyncResult(task_id)
     task.revoke(terminate=True)
+    
+    message(f"Task {task.id} stopped")
 
     return jsonify ({}), 200
 
@@ -206,24 +218,34 @@ def tracker_status(task_id):
             'playback_time' : 'celerySuccess',
             'game_state' : 'celerySuccess',
         }
+        
+        message(f"Task {task_id} completed successfully")
+        
     elif task.state == 'FAILURE':
         response = {
             'state' : task.state,
             'playback_time' : "celeryFailure",
             'game_state' : "celeryFailure",
         }
+        
+        message(f"Task {task_id} failed")
+        
     elif task.state == 'REVOKED':
         response = {
             'state' : task.state,
             'playback_time' : "revoked",
             'game_state' : "revoked",
         }
+        
+        message(f"Task {task_id} revoked")
+        
     elif task.state == 'PENDING' or task.state == 'STARTED':
         response = {
             'state' : task.state,
             'playback_time' : 'celeryPending',
             'game_state' : 'celeryPending',
         }
+        
     else:
         response = {
             'state' : task.state,
