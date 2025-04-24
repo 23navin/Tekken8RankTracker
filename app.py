@@ -8,7 +8,7 @@ from celery import Celery
 from redis import Redis
 
 #task
-from src.T8RankTracker import Tekken8RankTracker
+from src.T8RankTracker.tracker import Tekken8RankTracker
 
 #
 from time import sleep
