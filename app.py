@@ -20,7 +20,6 @@ app.config['SECRET_KEY'] = 'buh'
 app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
 app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/0'
 
-
 #setup Celery object
 celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
 celery.conf.update(app.config)
@@ -44,6 +43,7 @@ def mtask(self, video_link, video_date, start_time, end_time, frame_log, initial
     #initialize task
     tracker = Tekken8RankTracker(
         vod_url=video_link,
+        format='311', #avc1.640020 1280x720 60
         start_time=start_time,
         end_time=end_time,
         vod_date=video_date,
@@ -133,9 +133,20 @@ def get_ids():
 def run_tracker():
 
     video_link = session['video_link']
+    
+    start_time = session['start_time']
+    if start_time == '':
+        start_time = None
+    else:
+        start_time = int(start_time)
+        
+    end_time = session['end_time']
+    if end_time == '':
+        end_time = None
+    else:
+        end_time = int(end_time)
+    
     video_date = int(session['video_date'])
-    start_time = int(session['start_time'])
-    end_time = int(session['end_time'])
 
     if session['initial_state']:
         initial_state = Tekken8RankTracker.STATE_PREGAME
@@ -195,7 +206,13 @@ def tracker_status(task_id):
             'playback_time' : 'celerySuccess',
             'game_state' : 'celerySuccess',
         }
-    elif task.state == 'FAILURE' or task.state == 'REVOKED':
+    elif task.state == 'FAILURE':
+        response = {
+            'state' : task.state,
+            'playback_time' : "celeryFailure",
+            'game_state' : "celeryFailure",
+        }
+    elif task.state == 'REVOKED':
         response = {
             'state' : task.state,
             'playback_time' : "revoked",

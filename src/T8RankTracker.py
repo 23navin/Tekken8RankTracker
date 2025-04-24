@@ -319,16 +319,23 @@ class YoutubeCapture:
 
         #extract metadata with youtube-dl
         self.log_DEBUG("Loading Youtube video")
-        ydl_opts={}
+        ydl_opts={
+            "cookiefile": "bin/cookies.txt",
+        }
+        
         ydl=youtube_dl.YoutubeDL(ydl_opts)
         info_dict=ydl.extract_info(self.url, download=False)
         
         #get url for format
         formats = info_dict.get('formats',None)
         for f in formats:
-            if f.get('format_id') == format_id:
+            if f.get('resolution') == '1280x720' and f.get('video_ext') == 'mp4':
+            # if f.get('format_id') == format_id:
                 direct_url = f.get('url')
-                pass
+                break
+        else:
+            self.log_DEBUG("Format not found")
+            return
 
         #create cv2 object using url
         self.cap = cv2.VideoCapture(direct_url)
@@ -524,7 +531,7 @@ class Tekken8RankTracker:
         self.yt = YoutubeCapture(
             youtube_url=vod_url,
             format_id=format,
-            playback_start=start_time,
+            playback_start=self.tekken_start,
             playback_end=end_time,
             vod_date=vod_date
         )
@@ -533,7 +540,7 @@ class Tekken8RankTracker:
         self.fr = FrameRecognition()
 
         #setup api
-        self.info = self.api(initial_state, start_time)
+        self.info = self.api(initial_state, self.tekken_start)
 
         #setup log flags
         self.log_flag = True
@@ -1527,7 +1534,7 @@ if __name__ == "__main__":
         start_time=17541,
 
         #optional: when (in seconds)to stop recording (must be after leaving a lobby)
-        end_time=17600, 
+        end_time=17600,
 
         #optional: video date (if not the same as the upload date)
         vod_date=20240223,
@@ -1542,4 +1549,4 @@ if __name__ == "__main__":
     #start scraping
     while tracker.info.is_fsm_active():
         tracker.run_fsm()
-        print(tracker.info.get_preview())
+        # print(tracker.info.get_preview())

@@ -1,3 +1,7 @@
+// preview window
+var preview_created = false;
+var img = new Image();
+
 function start_script() {
     $.ajax({
         type:'POST',
@@ -10,6 +14,8 @@ function start_script() {
             update(task_id);
         }
     });
+
+    preview_created = false;
 }
 
 function pause_script() {
@@ -62,9 +68,6 @@ $(function() {
 $(function() {
     $('#stop-button').click(stop);
 });
-
-var preview_created = false;
-var img = new Image();
 
 function update(task_id) {
     $.getJSON('/status/'+task_id, function(data) {
