@@ -9,6 +9,7 @@ from redis import Redis
 
 #task
 from src.T8RankTracker.tracker import Tekken8RankTracker
+from src.T8RankTracker.constants import asciiColor as color
 
 #
 from time import sleep
@@ -29,7 +30,8 @@ redis = Redis()
 
 #logging
 def message(message:str):
-    print(f"[ACTION] {message}")
+    # print(f"[ACTION] {message}")
+    print(f"{color.bg.GREEN} [ACTION] {color.reset}{color.bg.bright.GREEN} {message} {color.reset}")
 
 
 #main task
@@ -111,13 +113,7 @@ def set_inputs():
     session['initial_state'] = data['init_state']
     session['frame_log'] = data['log_input']
     
-    message("autosaved inputs")
-    message(f"video_link: {session['video_link']}")
-    message(f"video_date: {session['video_date']}")
-    message(f"start_time: {session['start_time']}")
-    message(f"end_time: {session['end_time']}")
-    message(f"initial_state: {session['initial_state']}")
-    message(f"frame_log: {session['frame_log']}")
+    message(f"autosaved inputs \nvideo_link: {session['video_link']}\nvideo_date: {session['video_date']}\nstart_time: {session['start_time']}\nend_time: {session['end_time']}\ninitial_state: {session['initial_state']}\nframe_log: {session['frame_log']}")
     
     return '', 204
 

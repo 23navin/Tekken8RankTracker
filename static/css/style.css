@@ -1,5 +1,10 @@
 body {
     font-family: Arial;
+    margin: 0 auto;
+    max-width: 1200px;
+    width: 95%;
+    box-sizing: border-box;
+    padding-top: 25px;
 }
 
 div {
@@ -21,6 +26,7 @@ button {
     position:absolute;
     z-index: -5;
     width: 95%;
+    max-width: 1200px;
     margin-left: auto;
     margin-right: auto;
     left: 0;
@@ -33,6 +39,7 @@ button {
     position: absolute;
     z-index: 20;
     width: 95%;
+    max-width: 1200px;
     margin-left: auto;
     margin-right: auto;
     left: 0;

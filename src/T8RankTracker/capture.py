@@ -68,7 +68,6 @@ class YoutubeCapture:
         formats = info_dict.get('formats',None)
         for f in formats:
             if f.get('resolution') == '1280x720' and f.get('video_ext') == 'mp4':
-            # if f.get('format_id') == format_id:
                 direct_url = f.get('url')
                 break
         else:

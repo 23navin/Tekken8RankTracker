@@ -89,6 +89,9 @@ function update(task_id) {
             if (!preview_created) {
                 var canvas = document.getElementById("previewCanvas")
                 canvas.width = 1280;
+                canvas.height = 720;
+                canvas.style.height = 'auto';
+                
                 var ctx = canvas.getContext('2d');
                 
                 img.src = '/preview/'+task_id+'/'+data['playback_time'];
