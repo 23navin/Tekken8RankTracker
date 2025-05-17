@@ -9,7 +9,7 @@ from redis import Redis
 
 #task
 from src.T8RankTracker.tracker import Tekken8RankTracker
-from src.T8RankTracker.constants import asciiColor as color
+from src.T8RankTracker.constants import asciiColor as asciiColor
 
 #
 from time import sleep
@@ -31,7 +31,7 @@ redis = Redis()
 #logging
 def message(message:str):
     # print(f"[ACTION] {message}")
-    print(f"{color.bg.GREEN} [ACTION] {color.reset}{color.bg.bright.GREEN} {message} {color.reset}")
+    print(f"{asciiColor.bg.GREEN} [ACTION] {asciiColor.reset}{asciiColor.bg.bright.GREEN} {message} {asciiColor.reset}")
 
 
 #main task

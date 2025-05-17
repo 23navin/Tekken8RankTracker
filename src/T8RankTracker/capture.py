@@ -6,31 +6,28 @@ from pathlib import Path
 import csv
 
 import cv2
+# from vidgear.gears import CamGear
 
 # file management
-import os
+from os.path import isdir
+from os import makedirs
 import shutil
 import errno
 
-from src.T8RankTracker.constants import asciiColor as color
-from src.T8RankTracker.helpers import save_frame
+from src.T8RankTracker.constants import asciiColor as asciiColor
+from src.T8RankTracker.helpers import save_frame, sec_to_ms
 
-#convert seconds to milli-seconds
-def sec_to_ms(sec):
-    return sec*1000
-
-#creates img log
-def mkdir_img(path="bin/img"):
+def log_dir(path="bin/vid"):
     try:
-        if os.path.isdir(path):
+        if isdir(path):
             shutil.rmtree(path)
     except:
         pass
     
     try:
-        os.makedirs(path)
+        makedirs(path)
     except OSError as exc:
-        if exc.errno == errno.EEXIST and os.path.isdir(path):
+        if exc.errno == errno.EEXIST and isdir(path):
             pass
         else: raise
 
@@ -113,15 +110,15 @@ class YoutubeCapture:
                 ])
                 
         #create new img/ diretory
-        mkdir_img()
+        log_dir("bin/img")
 
     def log_EVENT(self, message="", italic=False ,note=""):
-        out = f"{color.bg.CYAN}{color.fg.WHITE}EVENT@{self.get_time()}{color.reset} "
+        out = f"{asciiColor.bg.CYAN}{asciiColor.fg.WHITE}EVENT@{self.get_time()}{asciiColor.reset} "
         if message:
             if italic:
-                out += f"{color.style.italic}{color.fg.WHITE}{message}{color.reset}"
+                out += f"{asciiColor.style.italic}{asciiColor.fg.WHITE}{message}{asciiColor.reset}"
             else:
-                out += f"{color.style.bold}{color.fg.WHITE}{message}{color.reset}"
+                out += f"{asciiColor.style.bold}{asciiColor.fg.WHITE}{message}{asciiColor.reset}"
 
         if note:
             out += f" {note}"
@@ -129,7 +126,7 @@ class YoutubeCapture:
         print(out)
 
     def log_DEBUG(self, message):
-        print(f"{color.bg.BLUE}{color.fg.WHITE}DEBUG@{self.get_time()}{color.reset} {message}")
+        print(f"{asciiColor.bg.BLUE}{asciiColor.fg.WHITE}DEBUG@{self.get_time()}{asciiColor.reset} {message}")
     
     def get_frame(self, type, save_flag):
         ret, frame = self.cap.read()

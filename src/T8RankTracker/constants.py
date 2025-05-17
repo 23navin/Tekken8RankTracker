@@ -1,3 +1,4 @@
+#list of all Tekken 8 fighters for tesseract to read and match to
 fighter_list = [
         'KAZUYA',
         'JIN',
@@ -33,8 +34,34 @@ fighter_list = [
         'REINA'
     ]
 
-#for logging print statements
+#for logging and print statements
 class asciiColor:
+    """
+    asciiColor
+
+    ANSI escape codes to style terminal text with colors, backgrounds, and text styles.
+
+    Attributes:
+        reset (str): Resets all terminal text formatting to default.
+
+    Classes:
+        bg:
+            Contains ANSI escape codes for background colors.
+
+            Subclass:
+                bright:
+                    Contains ANSI escape codes for bright background colors.
+                    
+        fg:
+            Contains ANSI escape codes for foreground (text) colors.
+
+            Subclass:
+                bright:
+                    Contains ANSI escape codes for bright foreground (text) colors.
+
+        style:
+            Contains ANSI escape codes for text styles.
+    """
     reset = '\033[0m'
 
     #background
@@ -84,3 +111,14 @@ class asciiColor:
         italic = '\033[3m'
         underline = '\033[4m'
         strike = '\033[9m'
+        
+#headers for web/youtube requests
+request_headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/123.0.0.0 Safari/537.36",
+    "Accept": "*/*",
+    "Accept-Encoding": "identity",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Connection": "keep-alive",
+}

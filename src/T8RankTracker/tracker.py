@@ -1,12 +1,17 @@
 from cv2 import imencode
 from re import sub
 
-from .constants import fighter_list
-from .constants import asciiColor as color
+from src.T8RankTracker.constants import fighter_list, asciiColor 
+from src.T8RankTracker.recognition import FrameRecognition, is_match, is_ready, is_TEKKENPROWESS
+from src.T8RankTracker.capture import YoutubeCapture
 
-from .recognition import FrameRecognition, is_match, is_ready, is_TEKKENPROWESS
 
-from .capture import YoutubeCapture
+# from .constants import fighter_list
+# from .constants import asciiColor
+
+# from .recognition import FrameRecognition, is_match, is_ready, is_TEKKENPROWESS
+
+# from .capture import YoutubeCapture
 
 class Tekken8RankTracker:
     #API
@@ -456,14 +461,14 @@ class Tekken8RankTracker:
                 rating = self.yt.RATING_UNKNOWN
 
                 if outcome == "Win":
-                    outcome_log = f"{color.fg.GREEN}{outcome}{color.reset}"
+                    outcome_log = f"{asciiColor.fg.GREEN}{outcome}{asciiColor.reset}"
                 elif outcome == "Loss":
-                    outcome_log = f"{color.fg.RED}{outcome}{color.reset}"
+                    outcome_log = f"{asciiColor.fg.RED}{outcome}{asciiColor.reset}"
                 else:
                     outcome_log = outcome
                 self.yt.log_EVENT(
                     message="Match Result:",
-                    note=f"{outcome_log} - Rating: {color.style.underline}{rating}{color.reset}"
+                    note=f"{outcome_log} - Rating: {asciiColor.style.underline}{rating}{asciiColor.reset}"
                 )
 
                 #save incomplete match
@@ -606,14 +611,14 @@ class Tekken8RankTracker:
                             rating = self.yt.RATING_UNKNOWN
 
                             if outcome == "Win":
-                                outcome_log = f"{color.fg.GREEN}{outcome}{color.reset}"
+                                outcome_log = f"{asciiColor.fg.GREEN}{outcome}{asciiColor.reset}"
                             elif outcome == "Loss":
-                                outcome_log = f"{color.fg.RED}{outcome}{color.reset}"
+                                outcome_log = f"{asciiColor.fg.RED}{outcome}{asciiColor.reset}"
                             else:
                                 outcome_log = outcome
                             self.yt.log_EVENT(
                                 message="Match Result:",
-                                note=f"{outcome_log} - Rating: {color.style.underline}{rating}{color.reset}"
+                                note=f"{outcome_log} - Rating: {asciiColor.style.underline}{rating}{asciiColor.reset}"
                             )
 
                             #save incomplete match
@@ -743,14 +748,14 @@ class Tekken8RankTracker:
                     rating = rating_temp
 
                     if outcome == "Win":
-                        outcome_log = f"{color.fg.GREEN}{outcome}{color.reset}"
+                        outcome_log = f"{asciiColor.fg.GREEN}{outcome}{asciiColor.reset}"
                     elif outcome == "Loss":
-                        outcome_log = f"{color.fg.RED}{outcome}{color.reset}"
+                        outcome_log = f"{asciiColor.fg.RED}{outcome}{asciiColor.reset}"
                     else:
                         outcome_log = outcome
                     self.yt.log_EVENT(
                         message="Match Result:",
-                        note=f"{outcome_log} - Rating: {color.style.underline}{rating}{color.reset}"
+                        note=f"{outcome_log} - Rating: {asciiColor.style.underline}{rating}{asciiColor.reset}"
                     )
 
                     self.yt.match_result(outcome, rating)
